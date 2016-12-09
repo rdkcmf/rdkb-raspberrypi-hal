@@ -639,8 +639,9 @@ INT wifi_getRadioPossibleChannels(INT radioIndex, CHAR *output_string)	//RDKB
 //The output_string is a max length 256 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioChannelsInUse(INT radioIndex, CHAR *output_string)	//RDKB
 {
-	if (NULL == output_string) 
-		return RETURN_ERR;
+    if (NULL == output_string)
+       return RETURN_ERR;
+
 	snprintf(output_string, 256, (radioIndex==0)?"1,6,11":"36,40");
 	return RETURN_OK;
 }
@@ -1714,8 +1715,9 @@ INT wifi_getIndexFromName(CHAR *inputSsidString, INT *ouput_int)
 
     *ouput_int = -1;
 	pos=strstr(inputSsidString, AP_PREFIX);
-	if(pos) {
-		sscanf(pos+sizeof(AP_PREFIX),"%d", ouput_int);
+	if(pos) 
+	{
+		sscanf(pos+strlen(AP_PREFIX),"%d", ouput_int);
 		return RETURN_OK;
 	} 
 	return RETURN_ERR;
@@ -1799,18 +1801,52 @@ INT wifi_setApRtsThreshold(INT apIndex, UINT threshold)
 // ouputs up to a 32 byte string as either "TKIPEncryption", "AESEncryption", or "TKIPandAESEncryption"
 INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 {
-	if (NULL == output_string) 
-		return RETURN_ERR;
-	snprintf(output_string, 32, "TKIPandAESEncryption");
-	return RETURN_OK;
+    struct params params={"wpa_pairwise",NULL};
+    if (NULL == output_string)
+        return RETURN_ERR;
+
+
+    wifi_hostapdRead(apIndex,&params,output_string);
+    wifi_dbg_printf("\nAmrit:%s output_string=%s",__func__,output_string);
+    if (NULL == output_string)
+        return RETURN_ERR;
+
+    if (strcmp(output_string,"TKIP") == 0)
+        strncpy(output_string,"TKIPEncryption", strlen("TKIPEncryption"));
+    else if(strcmp(output_string,"CCMP") == 0)
+        strncpy(output_string,"AESEncryption", strlen("AESEncryption"));
+    else if(strcmp(output_string,"TKIP CCMP") == 0)
+        strncpy(output_string,"TKIPandAESEncryption", strlen("TKIPandAESEncryption"));
+
+    return RETURN_OK;
 
 }
 
 // sets the encyption mode enviornment variable.  Valid string format is "TKIPEncryption", "AESEncryption", or "TKIPandAESEncryption"
 INT wifi_setApWpaEncryptionMode(INT apIndex, CHAR *encMode)
 {
-	//Save the encMode to wifi config and hostpad config. wait for wifi restart or hotapd restart to apply
-	return RETURN_ERR;
+    struct params params={'\0'};
+    int ret;
+
+
+    strncpy(params.name, "wpa_pairwise", strlen("wpa_pairwise"));
+
+    if ( strcmp(encMode, "TKIPEncryption") == 0)
+    {
+       strncpy(params.value, "TKIP", strlen("TKIP"));
+    } else if ( strcmp(encMode,"AESEncryption") == 0)
+    {
+        strncpy(params.value, "CCMP", strlen("CCMP"));
+    } else if (strcmp(encMode,"TKIPandAESEncryption") == 0)
+    {
+        strncpy(params.value,"TKIP CCMP",strlen("TKIP CCMP"));
+    }
+    ret=wifi_hostapdWrite(apIndex,&params);
+      return RETURN_OK;
+
+    //Save the encMode to wifi config and hostpad config. wait for wifi restart or hotapd restart to apply
+    return RETURN_ERR;
+
 }
 
 // deletes internal security varable settings for this ap
@@ -1843,8 +1879,21 @@ INT wifi_setApAuthMode(INT apIndex, INT mode)
 // sets an enviornment variable for the authMode. Valid strings are "None", "EAPAuthentication" or "SharedAuthentication"                     
 INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 {
-	//save to wifi config, and wait for wifi restart to apply
-	return RETURN_ERR;
+    //save to wifi config, and wait for wifi restart to apply
+    struct params params={'\0'};
+    int ret;
+
+    if(authMode ==  NULL)
+        return RETURN_ERR;
+    wifi_dbg_printf("\n%s AuthMode=%s",__func__,authMode);
+    strncpy(params.name,"wpa_key_mgmt",strlen("wpa_key_mgmt"));
+    if(strcmp(authMode,"PSKAuthentication") == 0)
+        strcpy(params.value,"WPA-PSK");
+    else if(strcmp(authMode,"EAPAuthentication") == 0)
+        strcpy(params.value,"WPA-EAP");
+
+    ret=wifi_hostapdWrite(apIndex,&params);
+    return ret;
 }
 
 // Outputs the number of stations associated per AP
@@ -2287,18 +2336,39 @@ INT wifi_getApSecurityPreSharedKey(INT apIndex, CHAR *output_string)
 // PSK Key of 8 to 63 characters is considered an ASCII string, and 64 characters are considered as HEX value
 INT wifi_setApSecurityPreSharedKey(INT apIndex, CHAR *preSharedKey)        
 {	
-	//save to wifi config and hotapd config. wait for wifi reset or hostapd restet to apply
-	return RETURN_ERR;
+    //save to wifi config and hotapd config. wait for wifi reset or hostapd restet to apply
+    struct params params={'\0'};
+    int ret;
+    strcpy(params.name,"wpa_passphrase");
+    strcpy(params.value,preSharedKey);
+    if(strlen(preSharedKey)<8 || strlen(preSharedKey)>63)
+    {
+        wifi_dbg_printf("\nCannot Set Preshared Key length of preshared key should be 8 to 63 chars\n");
+        return RETURN_ERR;
+    }
+    else
+    {
+        ret=wifi_hostapdWrite(apIndex,&params);
+        return ret;
+    }
+    printf("\n\n");
 }
 
 //A passphrase from which the PreSharedKey is to be generated, for WPA-Personal or WPA2-Personal or WPA-WPA2-Personal security modes.
 // outputs the passphrase, maximum 63 characters
 INT wifi_getApSecurityKeyPassphrase(INT apIndex, CHAR *output_string)
 {	
-	if(!output_string)
-		return RETURN_ERR;
-	snprintf(output_string, 63, "12345678");
-	return RETURN_OK;
+    struct params params={"wpa_passphrase",NULL};
+    wifi_dbg_printf("\nFunc=%s\n",__func__);
+    if (NULL == output_string)
+    return RETURN_ERR;
+    wifi_hostapdRead(apIndex,&params,output_string);
+    wifi_dbg_printf("\noutput_string=%s\n",output_string);
+
+    if(output_string==NULL)
+        return RETURN_ERR;
+    else
+        return RETURN_OK;
 }
 
 // sets the passphrase enviornment variable, max 63 characters
