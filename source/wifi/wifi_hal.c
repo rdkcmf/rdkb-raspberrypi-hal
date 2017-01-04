@@ -86,7 +86,7 @@
 #define MAX_BUF_SIZE 128
 #define MAX_CMD_SIZE 1024
 
-//#define WIFI_DEBUG 
+#define WIFI_DEBUG 
 
 #ifdef WIFI_DEBUG
 #define wifi_dbg_printf printf
@@ -481,10 +481,65 @@ INT wifi_getRadioMaxBitRate(INT radioIndex, CHAR *output_string)	//RDKB
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//RDKB
 {
-	if (NULL == output_string) 
-		return RETURN_ERR;
-	snprintf(output_string, 64, "2.4GHz,5GHz");
-	return RETURN_OK;
+        char buf[MAX_BUF_SIZE]={'\0'};
+        char str[MAX_BUF_SIZE]={'\0'};
+        char cmd[MAX_CMD_SIZE]={'\0'};
+        char *ch=NULL;
+        char *ch2=NULL;
+
+		sprintf(cmd,"grep 'channel=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
+        
+   		if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+	    {
+    	    printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+	        return RETURN_ERR;
+	    }
+        ch=strchr(buf,'\n');
+        *ch='\0';
+        ch=strchr(buf,'=');
+        if(ch==NULL)
+          return RETURN_ERR;
+
+	
+        ch++;
+		sprintf(cmd,"grep 'interface=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
+
+        if(_syscmd(cmd,str,64) ==  RETURN_ERR)
+        {
+                wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+                return RETURN_ERR;
+		}
+
+		
+		ch2=strchr(str,'\n');
+		//replace \n with \0
+		*ch2='\0';
+        ch2=strchr(str,'=');
+        if(ch2==NULL)
+        {
+        	wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+       		return RETURN_ERR;
+        }
+        else
+         wifi_dbg_printf("%s",ch2+1);
+
+		
+        ch2++;
+
+
+        sprintf(cmd,"iwlist %s frequency|grep 'Channel %s'",ch2,ch);
+
+        memset(buf,'\0',sizeof(buf));
+        if(_syscmd(cmd,buf,sizeof(buf))==RETURN_ERR)
+		{
+			wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+			return RETURN_ERR;
+		}
+		if (strstr(buf,"2.4") != NULL )
+			strcpy(output_string,"2.4G");
+		else if(strstr(buf,"5.") != NULL )
+			strcpy(output_string,"5G_11AC");
+		return RETURN_OK;
 }
 
 //Get the frequency band at which the radio is operating, eg: "2.4GHz"
@@ -498,34 +553,33 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
         char *ch=NULL;
         char *ch2=NULL;
 
-    if (NULL == output_string) 
-        return RETURN_ERR;
-	
-	sprintf(cmd,"grep 'channel=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
+		sprintf(cmd,"grep 'channel=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
         
-    if(_syscmd(cmd,buf,sizeof(buf) == RETURN_ERR))
-    {
-        wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
-        return RETURN_ERR;
-    }
+   		if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+	    {
+    	    printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+	        return RETURN_ERR;
+	    }
         ch=strchr(buf,'\n');
         *ch='\0';
-
         ch=strchr(buf,'=');
         if(ch==NULL)
           return RETURN_ERR;
 
+	
         ch++;
-        wifi_dbg_printf("\nch=%s\n",ch);
 		sprintf(cmd,"grep 'interface=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
 
-//      if(_syscmd("grep 'interface=' /etc/hostapd.conf",str,64) ==  RETURN_ERR)
         if(_syscmd(cmd,str,64) ==  RETURN_ERR)
         {
                 wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
                 return RETURN_ERR;
-	}
+		}
 
+		
+		ch2=strchr(str,'\n');
+		//replace \n with \0
+		*ch2='\0';
         ch2=strchr(str,'=');
         if(ch2==NULL)
         {
@@ -535,18 +589,21 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
         else
          wifi_dbg_printf("%s",ch2+1);
 
+		
         ch2++;
 
 
-        sprintf(cmd,"iwlist %s frequency|grep channel '%s'",ch2,ch);
+        sprintf(cmd,"iwlist %s frequency|grep 'Channel %s'",ch2,ch);
 
         memset(buf,'\0',sizeof(buf));
-        if(_syscmd(cmd,buf,sizeof(buf)==RETURN_ERR))
-	{
-		wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
-		return RETURN_ERR;
-	}
-	return RETURN_OK;
+        if(_syscmd(cmd,buf,sizeof(buf))==RETURN_ERR)
+		{
+			wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+			return RETURN_ERR;
+		}
+
+		strcpy(output_string,buf);
+		return RETURN_OK;
 }
 
 //Get the Supported Radio Mode. eg: "b,g,n"; "n,ac"
@@ -621,6 +678,26 @@ return RETURN_OK;
 //Set the radio operating mode, and pure mode flag. 
 INT wifi_setRadioChannelMode(INT radioIndex, CHAR *channelMode, BOOL gOnlyFlag, BOOL nOnlyFlag, BOOL acOnlyFlag)	//RDKB
 {
+	if(strstr (channelMode,"20") != NULL )
+	{
+		printf("\nChannel Mode is 20\n");
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+	}
+	else if (strstr (channelMode,"40") != NULL)
+	{
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"1");
+		printf("\nChannel Mode is 40\n");
+	}
+	else if (strstr (channelMode,"80") != NULL)
+	{
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"2");
+		printf("\nChannel Mode is 80\n");
+	}
+	else 
+	{
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"3");
+		printf("\nChannel Mode is 160\n");
+	}
 	return RETURN_ERR;
 }
 
@@ -802,7 +879,7 @@ INT wifi_setRadioDfsRefreshPeriod(INT radioIndex, ULONG seconds) //Tr181
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) //Tr181
 {
-  struct params params={'\0'};
+  struct params params={"vht_oper_chwidth",'\0'};
   wifi_hostapdRead(radioIndex,&params,output_string);
   if (NULL == output_string) 
      return RETURN_ERR;
@@ -811,15 +888,14 @@ INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) 
 }
 
 //Set the Operating Channel Bandwidth.
-INT wifi_setRadioOperatingChannelBandwidth(INT radioIndex, CHAR *bandwidth) //Tr181	//AP only
+INT wifi_setRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) //Tr181	//AP only
 {
   char buf[127]={'\0'};
   struct params params={'\0'};
   strcpy(params.name,"vht_oper_chwidth");
-  sprintf(buf,"%d",bandwidth);
-  strncpy(params.value,buf,1);
-  printf("\n%s\n",__func__);
-  printf("\nparams.value=%s\n",params.value);
+  strncpy(params.value,output_string,1);
+  printf("\n%s:",__func__);
+  printf("  params.value=%s\n",params.value);
   wifi_hostapdWrite(radioIndex,&params);
   return RETURN_ERR;
 }
@@ -1748,8 +1824,6 @@ INT wifi_setApBeaconType(INT apIndex, CHAR *beaconTypeString)
     struct params params={"beaconType",NULL};
     if (NULL == beaconTypeString)
                 return RETURN_ERR;
-    
-
     printf("\nbeaconTypeString=%s",beaconTypeString);
     strncpy(params.value,beaconTypeString,strlen(beaconTypeString));
 
@@ -1891,6 +1965,8 @@ INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
         strcpy(params.value,"WPA-PSK");
     else if(strcmp(authMode,"EAPAuthentication") == 0)
         strcpy(params.value,"WPA-EAP");
+    else if(strcmp(authMode,"None") == 0) //Donot change in case the authMode is None
+			 return RETURN_OK;			  //This is taken careof in beaconType
 
     ret=wifi_hostapdWrite(apIndex,&params);
     return ret;
@@ -2076,12 +2152,51 @@ INT wifi_createHostApdConfig(INT apIndex, BOOL createWpsCfg)
 INT wifi_startHostApd()
 {
 	char cmd[128] = {0};
-	char buf[128] = {0};
-	
-	sprintf(cmd,"hostapd  -B /etc/hostapd0.conf /etc/hostapd1.conf");
-	_syscmd(cmd, buf, sizeof(buf));
-	return RETURN_OK;
+    char buf[1028] = {0};
+
+    _syscmd("iwconfig wlan0|grep 802.11a",buf,sizeof(buf));
+    if(strlen(buf) > 0)
+    {
+        system("sed -i 's/interface=wlan0/interface=wlan1/g' /etc/hostapd0.conf");
+        system("sed -i 's/interface=wlan1/interface=wlan0/g' /etc/hostapd1.conf");
+		_syscmd("hostapd -B /etc/hostapd0.conf /etc/hostapd1.conf",buf,sizeof(buf));
+    }
+    else 
+    {
+        system("sed -i 's/interface=wlan1/interface=wlan0/g' /etc/hostapd0.conf");
+        system("sed -i 's/interface=wlan0/interface=wlan1/g' /etc/hostapd1.conf");
+		memset(buf,'\0',sizeof(buf));
+		_syscmd("iwconfig wlan1",buf,sizeof(buf));
+		if(strlen(buf)== 0)
+		{	
+			_syscmd("hostapd -B /etc/hostapd0.conf",buf,sizeof(buf));
+		}
+		else
+		{
+			_syscmd("hostapd -B /etc/hostapd0.conf /etc/hostapd1.conf",buf,sizeof(buf));	
+	    }
+	}
+
+#if 0
+sprintf(cmd,"iwconfig");
+    _syscmd(cmd,buf,sizeof(buf));
+	printf("\nbuf=%s\n",buf);
+    if(strstr(buf,"wlan1")!=NULL)
+        {
+            memset(cmd,'\0',128);
+            sprintf(cmd,"hostapd  -B /etc/hostapd0.conf /etc/hostapd1.conf");
+        }
+    else
+        {
+            memset(cmd,'\0',128);
+            sprintf(cmd,"hostapd  -B /etc/hostapd0.conf");
+        }
+    memset(buf,'\0',128);
+    _syscmd(cmd, buf, sizeof(buf));
+#endif
+    return RETURN_OK;
 }
+
 
  // stops hostapd	
 INT wifi_stopHostApd()                                        
