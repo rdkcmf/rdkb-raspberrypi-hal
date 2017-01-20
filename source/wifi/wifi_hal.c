@@ -274,6 +274,7 @@ INT wifi_init()                            //RDKB
         system("sed -i 's/interface=wlan1/interface=wlan0/g' /etc/hostapd0.conf");
         system("sed -i 's/interface=wlan0/interface=wlan1/g' /etc/hostapd1.conf");
     }
+    system("/usr/sbin/iw reg set US");
     #ifdef USE_HOSTAPD_STRUCT
     read_hostapd_all_aps();
     #endif
