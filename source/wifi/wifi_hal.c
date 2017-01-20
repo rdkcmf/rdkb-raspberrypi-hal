@@ -708,7 +708,7 @@ INT wifi_getRadioPossibleChannels(INT radioIndex, CHAR *output_string)	//RDKB
 {
 	if (NULL == output_string) 
 		return RETURN_ERR;
-	snprintf(output_string, 64, (radioIndex==0)?"1-11":"36,40");
+	snprintf(output_string, 64, (radioIndex==0)?"1,2,3,4,6,7,8,9,10,11":"36,40");
 	return RETURN_OK;
 }
 
@@ -732,8 +732,9 @@ INT wifi_getRadioChannel(INT radioIndex,ULONG *output_ulong)	//RDKB
   wifi_hostapdRead(radioIndex,&params,output);
   if(output!=NULL)
   {
-    output_ulong=atol(output);
+    *output_ulong=atol(output);
   }
+  wifi_dbg_printf("\n*output_long=%ld output from hal=%s\n",*output_ulong,output);
   
   return RETURN_OK;
 }
@@ -894,8 +895,8 @@ INT wifi_setRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) 
   struct params params={'\0'};
   strcpy(params.name,"vht_oper_chwidth");
   strncpy(params.value,output_string,1);
-  printf("\n%s:",__func__);
-  printf("  params.value=%s\n",params.value);
+  wifi_dbg_printf("\n%s:",__func__);
+  wifi_dbg_printf("params.value=%s\n",params.value);
   wifi_hostapdWrite(radioIndex,&params);
   return RETURN_ERR;
 }
@@ -1810,7 +1811,7 @@ INT wifi_getApBeaconType(INT apIndex, CHAR *output_string)
 
     
     wifi_hostapdRead(apIndex,&params,output_string);
-    wifi_dbg_printf("\nAmrit:%s: output_string=%s\n",__func__,output_string);
+    wifi_dbg_printf("\n%s: output_string=%s\n",__func__,output_string);
     if (NULL == output_string) 
         return RETURN_ERR;
     
@@ -1879,9 +1880,9 @@ INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
     if (NULL == output_string)
         return RETURN_ERR;
 
-
+    memset(output_string,'\0',32);
     wifi_hostapdRead(apIndex,&params,output_string);
-    wifi_dbg_printf("\nAmrit:%s output_string=%s",__func__,output_string);
+    wifi_dbg_printf("\n%s output_string=%s",__func__,output_string);
     if (NULL == output_string)
         return RETURN_ERR;
 
