@@ -189,9 +189,7 @@ int wifi_hostapdWrite(int ap,struct params *params)
     sprintf(cmd,"sed -i 's/%s=%s/%s=%s/g' %s%d.conf",params->name,cur_val,params->name,params->value,HOSTAPD_FNAME,ap);
 	printf("\ncur_val for wpa=%s wpa_val=%s\ncmd=%s\n",cur_val,wpa_val,cmd);
     _syscmd(cmd,buf,sizeof(buf));
-    system("killall hostapd");
-    sleep(1);
-    system("hostapd -B /etc/hostapd0.conf /etc/hostapd1.conf");
+    system("systemctl restart hostapd.service");
     return RETURN_OK;
   }
   
@@ -201,9 +199,7 @@ int wifi_hostapdWrite(int ap,struct params *params)
   sprintf(cmd,"sed -i 's/%s=%s/%s=%s/g' %s%d.conf",params->name,cur_val,params->name,params->value,HOSTAPD_FNAME,ap);
   _syscmd(cmd,buf,sizeof(buf));
   wifi_dbg_printf("\ncmdsss=%s\n",cmd);
-  system("killall hostapd");
-  sleep(1);
-  system("hostapd -B /etc/hostapd0.conf /etc/hostapd1.conf");
+  system("systemctl restart hostapd.service");
   return RETURN_OK;
 }
 

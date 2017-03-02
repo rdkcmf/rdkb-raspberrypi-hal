@@ -100,34 +100,70 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
 {
     FILE *f;
     char *ptr = retBuf;
-	int bufSize=retBufSize, bufbytes=0, readbytes=0;
+    int bufSize=retBufSize, bufbytes=0, readbytes=0;
 
     if((f = popen(cmd, "r")) == NULL) {
-        printf("popen %s error\n", cmd);
+        fprintf(stderr,"\npopen %s error\n", cmd);
         return RETURN_ERR;
     }
 
     while(!feof(f))
     {
         *ptr = 0;
-		if(bufSize>=128) {
-			bufbytes=128;
-		} else {
-			bufbytes=bufSize-1;
-		}
+	if(bufSize>=128) {
+	   bufbytes=128;
+	} else {
+	   bufbytes=bufSize-1;
+	}
 		
         fgets(ptr,bufbytes,f); 
-		readbytes=strlen(ptr);		
+	readbytes=strlen(ptr);
         if( readbytes== 0)        
             break;
         bufSize-=readbytes;
         ptr += readbytes;
     }
     pclose(f);
-	retBuf[retBufSize-1]=0;
+    retBuf[retBufSize-1]=0;
     return RETURN_OK;
 }
 
+/**************************************************************************/
+/*! \fn void add_ifnames_in_bridge()
+ **************************************************************************
+ *  \brief This function add given interfaces in given bridges
+ *  \param[in] bridge name,interface list seperated by comma',' or space' '
+ *  \return void
+ **************************************************************************/
+static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
+{
+    char *list = ifnames_list;
+    char command[MAX_BUF_SIZE] = "";
+    char out[MAX_BUF_SIZE] = "";
+    char *temp;
+
+    sprintf(command,"ifconfig %s",bridge);
+
+    if(RETURN_ERR == _syscmd(command,out,MAX_BUF_SIZE))
+    {
+        return RETURN_ERR;
+    }
+    if(strlen(out) == 0)
+    {
+      fprintf(stderr,"\nbridge interface is not Ready!!!\n");
+      return RETURN_ERR;
+    }
+
+    temp = strtok(list,", ");
+    while(temp != NULL)
+    {
+       /*adding interface in bridge*/
+        sprintf(command, "brctl addif %s %s", bridge,temp);
+        system(command);
+        temp = strtok(NULL,", ");
+    }
+    return RETURN_OK;
+}
 
 void wifi_newApAssociatedDevice_callback_register(wifi_newApAssociatedDevice_callback callback_proc)
 {
@@ -262,19 +298,37 @@ INT wifi_initRadio(INT radioIndex)
 // Initializes the wifi subsystem (all radios)
 INT wifi_init()                            //RDKB
 {
-	char buf[MAX_BUF_SIZE]={'\0'};
-    _syscmd("iwconfig wlan0|grep 802.11a",buf,sizeof(buf));
-    if(strlen(buf) > 0)
+    char interface[MAX_BUF_SIZE]={'\0'};
+    char bridge_name[MAX_BUF_SIZE]={'\0'};
+    INT len=0;
+    if( ( RETURN_ERR == _syscmd("syscfg get lan_ifname",bridge_name,sizeof(bridge_name)) ) || 
+        ( RETURN_ERR == _syscmd("iwconfig | grep -r \"IEEE 802.11\" | cut -d \" \" -f1 | tr '\n' ' '",interface,sizeof(interface)) ) )
     {
-        system("sed -i 's/interface=wlan0/interface=wlan1/g' /etc/hostapd0.conf");
-        system("sed -i 's/interface=wlan1/interface=wlan0/g' /etc/hostapd1.conf");
+	return RETURN_ERR;
+    }
+
+    system("/usr/sbin/iw reg set US");
+    system("systemctl start hostapd.service");
+    sleep(2);//sleep to wait for hostapd to start
+
+    if((strlen(bridge_name) > 0) && (strlen(interface) > 0) )
+    {
+          /* Removing '\n' from bridge_name because syscfg get lan_ifname returns bridge name terminating with '\n'*/
+          len=strlen(bridge_name);
+          if(bridge_name[len-1]=='\n')
+          bridge_name[len-1]='\0';
+
+          if(RETURN_ERR == add_ifnames_in_bridge(bridge_name,interface))
+          {
+              fprintf(stderr,"\nFailed to radio add interface in bridge\n");
+              return RETURN_ERR;
+          }
     }
     else
     {
-        system("sed -i 's/interface=wlan1/interface=wlan0/g' /etc/hostapd0.conf");
-        system("sed -i 's/interface=wlan0/interface=wlan1/g' /etc/hostapd1.conf");
+        fprintf(stderr,"\n***Either bridge or Radio interfaces list are Empty***\n");
+        return RETURN_ERR;
     }
-    system("/usr/sbin/iw reg set US");
     #ifdef USE_HOSTAPD_STRUCT
     read_hostapd_all_aps();
     #endif
