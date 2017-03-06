@@ -456,19 +456,16 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)	//RDKB
     char cmd[MAX_CMD_SIZE]={'\0'};
     char buf[MAX_BUF_SIZE]={'\0'};
 
-    sprintf(cmd,"ifconfig|grep wlan%d",radioIndex);
-    _syscmd(cmd,buf,sizeof(buf));
-    if(strlen(buf)>0)
-        *output_bool=1;
-    else
-        *output_bool=0;
-
-    printf("\noutput_bool=%d",*output_bool);
     if (NULL == output_bool) 
     {
         return RETURN_ERR;
     } else {
-        *output_bool = FALSE;
+        sprintf(cmd,"ifconfig|grep wlan%d",radioIndex);
+        _syscmd(cmd,buf,sizeof(buf));
+        if(strlen(buf)>0)
+            *output_bool=1;
+        else
+            *output_bool=0;
         return RETURN_OK;
     }
 }
