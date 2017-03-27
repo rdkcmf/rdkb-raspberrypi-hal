@@ -2025,6 +2025,19 @@ INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
     return ret;
 }
 
+// sets an enviornment variable for the authMode. Valid strings are "None", "EAPAuthentication" or "SharedAuthentication"
+INT wifi_getApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
+{
+    //save to wifi config, and wait for wifi restart to apply
+    struct params params={'\0'};
+    int ret;
+
+    if(authMode ==  NULL)
+        return RETURN_ERR;
+    strcpy(authMode,"EAPAuthentication");
+    return RETURN_OK;
+}
+
 // Outputs the number of stations associated per AP
 INT wifi_getApNumDevicesAssociated(INT apIndex, ULONG *output_ulong)
 {

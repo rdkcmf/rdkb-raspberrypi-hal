@@ -3552,6 +3552,27 @@ INT wifi_setApAuthMode(INT apIndex, INT mode);                        // set the
 */
 INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode);   // sets an enviornment variable for the authMode. Valid strings are "None", "EAPAuthentication" or "SharedAuthentication"
 
+/* wifi_getApBasicAuthenticationMode() function */
+/**
+* @description Gets an enviornment variable for the authMode.
+*
+* @param apIndex - Access Point index
+* @param authMode - Authentication mode
+*
+* @return The status of the operation
+* @retval RETURN_OK if successful
+* @retval RETURN_ERR if any error is detected
+*
+* @execution Synchronous
+* @sideeffect None
+*
+* @note This function must not suspend and must not invoke any blocking system
+* calls. It should probably just send a message to a driver event handler task.
+*
+*/
+INT wifi_getApBasicAuthenticationMode(INT apIndex, CHAR *authMode);   // gets an enviornment variable for the authMode. Valid strings are "None", "EAPAuthentication" or "SharedAuthentication"
+
+
 /* wifi_getApNumDevicesAssociated() function */
 /**
 * @description Outputs the number of stations associated per AP.
