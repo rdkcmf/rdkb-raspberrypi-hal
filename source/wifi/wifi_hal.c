@@ -1928,15 +1928,31 @@ INT wifi_setApRtsThreshold(INT apIndex, UINT threshold)
 // ouputs up to a 32 byte string as either "TKIPEncryption", "AESEncryption", or "TKIPandAESEncryption"
 INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 {
+    struct params beacon={"beaconType",NULL};
     struct params params={"wpa_pairwise",NULL};
+    char buf[32];
+
     if (NULL == output_string)
         return RETURN_ERR;
 
+    memset(buf,'\0',32);
+    wifi_hostapdRead(apIndex,&beacon,buf);
+
+    if((strcmp(buf,"WPAand11i")==0))
+    {
+        strcpy(params.name,"rsn_pairwise");
+    }
+    else if((strcmp(buf,"11i")==0))
+    {
+        strcpy(params.name,"rsn_pairwise");
+    }
+    else if((strcmp(buf,"WPA")==0))
+    {
+        strcpy(params.name,"wpa_pairwise");
+    }
     memset(output_string,'\0',32);
     wifi_hostapdRead(apIndex,&params,output_string);
     wifi_dbg_printf("\n%s output_string=%s",__func__,output_string);
-    if (NULL == output_string)
-        return RETURN_ERR;
 
     if (strcmp(output_string,"TKIP") == 0)
         strncpy(output_string,"TKIPEncryption", strlen("TKIPEncryption"));
@@ -1952,11 +1968,13 @@ INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 // sets the encyption mode enviornment variable.  Valid string format is "TKIPEncryption", "AESEncryption", or "TKIPandAESEncryption"
 INT wifi_setApWpaEncryptionMode(INT apIndex, CHAR *encMode)
 {
+    struct params beacon={"beaconType",NULL};
     struct params params={'\0'};
+    char output_string[32];
     int ret;
 
-
-    strncpy(params.name, "wpa_pairwise", strlen("wpa_pairwise"));
+    memset(output_string,'\0',32);
+    wifi_hostapdRead(apIndex,&beacon,output_string);
 
     if ( strcmp(encMode, "TKIPEncryption") == 0)
     {
@@ -1968,11 +1986,25 @@ INT wifi_setApWpaEncryptionMode(INT apIndex, CHAR *encMode)
     {
         strncpy(params.value,"TKIP CCMP",strlen("TKIP CCMP"));
     }
-    ret=wifi_hostapdWrite(apIndex,&params);
-      return RETURN_OK;
-
-    //Save the encMode to wifi config and hostpad config. wait for wifi restart or hotapd restart to apply
-    return RETURN_ERR;
+    
+    if((strcmp(output_string,"WPAand11i")==0))
+    {
+        strcpy(params.name,"wpa_pairwise");
+        ret=wifi_hostapdWrite(apIndex,&params);
+        strcpy(params.name,"rsn_pairwise");
+        ret=wifi_hostapdWrite(apIndex,&params);
+    }
+    else if((strcmp(output_string,"11i")==0))
+    {
+        strcpy(params.name,"rsn_pairwise");
+        ret=wifi_hostapdWrite(apIndex,&params);
+    }
+    else if((strcmp(output_string,"WPA")==0))
+    {
+        strcpy(params.name,"wpa_pairwise");
+        ret=wifi_hostapdWrite(apIndex,&params);
+    }
+     return RETURN_OK;
 
 }
 
@@ -2034,7 +2066,7 @@ INT wifi_getApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 
     if(authMode ==  NULL)
         return RETURN_ERR;
-    strcpy(authMode,"EAPAuthentication");
+    strcpy(authMode,"SharedAuthentication");
     return RETURN_OK;
 }
 
@@ -2274,6 +2306,12 @@ INT wifi_stopHostApd()
 	_syscmd(cmd, buf, sizeof(buf));
 	
 	return RETURN_OK;	
+}
+
+// restart hostapd dummy function
+INT wifi_restartHostApd()
+{
+        return RETURN_OK;
 }
 
 // sets the AP enable status variable for the specified ap.

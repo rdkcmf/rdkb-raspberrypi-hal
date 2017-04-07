@@ -3939,6 +3939,24 @@ INT wifi_startHostApd();                                            // starts ho
 */
 INT wifi_stopHostApd();                                             // stops hostapd
 
+/* wifi_restartHostApd() function */
+/**
+* @description restarts hostapd
+*
+* @param None
+*
+* @return The status of the operation
+* @retval RETURN_OK if successful
+* @retval RETURN_ERR if any error is detected
+*
+* @execution Synchronous
+* @sideeffect None
+*
+* @note This function must not suspend and must not invoke any blocking system
+* calls. It should probably just send a message to a driver event handler task.
+*
+*/
+INT wifi_restartHostApd();
 //-----------------------------------------------------------------------------------------------
 
 /* wifi_setApEnable() function */

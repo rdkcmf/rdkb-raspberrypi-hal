@@ -33,7 +33,6 @@
 
 #define wifi_printf printf
 #define MAX_APS 2
-static int wifi_readHostapd();
 int wifi_readHostapd(int ap,struct hostap_conf *conf);
 int wifi_hostapdWrite(int ap,struct params *params);
 int wifi_hostapdRead(int ap,struct params *params,char *output);
@@ -159,11 +158,14 @@ int wifi_hostapdWrite(int ap,struct params *params)
   if(strncmp(params->name,"beaconType",strlen("beaconType")) ==0 )
   {
     wifi_dbg_printf("\nparams name is BeaconType params value is %s \n",params->value);
-    if((strcmp(params->value,"WPAand11i")==0) || (strcmp(params->value,"11i")==0))
+    if((strcmp(params->value,"WPAand11i")==0))
+        strcpy(wpa_val,"3");
+    else if((strcmp(params->value,"11i")==0))
         strcpy(wpa_val,"2");
     else if((strcmp(params->value,"WPA")==0))
-        strcpy(wpa_val,"1");        
-	wifi_hostapdRead(ap,params,cur_val);
+        strcpy(wpa_val,"1");
+
+    wifi_hostapdRead(ap,params,cur_val);
 
 
     if(ap==0)
