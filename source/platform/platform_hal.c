@@ -36,6 +36,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "utctx/utctx.h"
+#include "utctx/utctx_api.h"
 
 #include "platform_hal.h"
 
@@ -82,8 +84,41 @@ INT platform_hal_GetDeviceConfigStatus(CHAR *pValue) { strcpy(pValue, "Complete"
 
 INT platform_hal_GetTelnetEnable(BOOLEAN *pFlag) { *pFlag = FALSE; return RETURN_OK; }
 INT platform_hal_SetTelnetEnable(BOOLEAN Flag) { return RETURN_ERR; }
-INT platform_hal_GetSSHEnable(BOOLEAN *pFlag) { *pFlag = FALSE; return RETURN_OK; }
-INT platform_hal_SetSSHEnable(BOOLEAN Flag) { return RETURN_ERR; }
+INT platform_hal_GetSSHEnable(BOOLEAN *pFlag)
+{ 
+    char ssh_access[2] = { 0 };
+    UtopiaContext ctx;
+
+    if(NULL==pFlag)
+        return RETURN_ERR;
+
+    if (!Utopia_Init(&ctx))
+        return RETURN_ERR;
+
+    if (!Utopia_RawGet(&ctx, NULL, "mgmt_wan_sshaccess",
+                       ssh_access, sizeof(ssh_access))) {
+        Utopia_Free(&ctx, 0);
+        return RETURN_ERR;
+    }
+    *pFlag = atoi(ssh_access);
+    Utopia_Free(&ctx, 0);
+    return RETURN_OK;
+}
+INT platform_hal_SetSSHEnable(BOOLEAN Flag)
+{
+    char ssh_access[2] = { 0 };
+    UtopiaContext ctx;
+    ssh_access[0] = '0' + ! !Flag;
+    if (!Utopia_Init(&ctx))
+        return RETURN_ERR;
+    if (!Utopia_RawSet(&ctx, NULL, "mgmt_wan_sshaccess", ssh_access)) {
+        Utopia_Free(&ctx, 0);
+        return RETURN_ERR;
+    }
+    Utopia_SetEvent(&ctx, Utopia_Event_Firewall_Restart);
+    Utopia_Free(&ctx, 1);
+    return RETURN_OK;
+}
 
 INT platform_hal_GetSNMPEnable(CHAR* pValue) { return RETURN_ERR; }
 INT platform_hal_SetSNMPEnable(CHAR* pValue) { return RETURN_ERR; }
