@@ -5188,6 +5188,26 @@ void wifi_newApAssociatedDevice_callback_register(wifi_newApAssociatedDevice_cal
 INT wifi_setApBeaconRate(INT radioIndex,CHAR *beaconRate);
 INT wifi_getApBeaconRate(INT apIndex, CHAR *beaconRate);
 
+/* Enum to define WiFi Bands */
+typedef enum
+{
+    band_invalid = -1,
+    band_2_4 = 0,
+    band_5 = 1,
+} wifi_band;
+
+/* INT wifi_getApIndexForWiFiBand(wifi_band band)  */
+/**
+* @description Get the AP index for requested WiFi Band.
+*
+* @param wifi_band - WiFi band for which AP Index is required
+*
+* @return AP Index for requested WiFi Band
+*
+*/
+INT wifi_getApIndexForWiFiBand(wifi_band band);
+
+
 #define HOSTAPD_FNAME "/etc/hostapd"
 #define SEC_FNAME "/etc/sec_file.txt"
 enum hostap_names

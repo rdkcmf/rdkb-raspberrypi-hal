@@ -187,6 +187,19 @@ int wifi_hostapdWrite(int ap,struct params *params)
     memset(cur_val,'\0',sizeof(cur_val));
     strncpy(params->name,"wpa",strlen("wpa"));
     strncpy(params->value,wpa_val,strlen(wpa_val));
+
+    /* If new security mode value for param "wpa" is '3' then set it to '2'.
+       Security mode '3' is supposed to support both WPA-Personal and WPA2-personal
+       but it is supporting only WPA-Personal and not to WPA2-Personal for security 
+       mode setting '3'.
+    */
+    if( ('3' == wpa_val[0]) && ( wifi_getApIndexForWiFiBand(band_2_4) == ap) )
+    {
+         wifi_dbg_printf("\n Current value of param wpa is 3, setting it to 2.\n");
+         strcpy(params->value, "2");
+    }
+
+
 	wifi_hostapdRead(ap,params,cur_val);
     sprintf(cmd,"sed -i 's/%s=%s/%s=%s/g' %s%d.conf",params->name,cur_val,params->name,params->value,HOSTAPD_FNAME,ap);
 	printf("\ncur_val for wpa=%s wpa_val=%s\ncmd=%s\n",cur_val,wpa_val,cmd);

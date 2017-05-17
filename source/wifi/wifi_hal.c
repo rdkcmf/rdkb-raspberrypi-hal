@@ -3106,6 +3106,28 @@ INT wifi_setRouterEnable(INT wlanIndex, INT *RouterEnabled)
    return RETURN_OK;
 }
 
+INT wifi_getApIndexForWiFiBand(wifi_band band)
+{
+    char cmd[128] = {0};
+    char buf[1028] = {0};
+    int  apIndex = -1;
+
+    _syscmd("iwconfig wlan0|grep 802.11a", buf, sizeof(buf));
+    if( strlen(buf) > 0 )
+    {
+        apIndex = ( band_2_4 == band ) ? 1: 0;
+    }
+    else
+    {
+        apIndex = ( band_2_4 == band ) ? 0 : 1;
+    }
+
+    wifi_dbg_printf("AP Index for band %d is %d", band, apIndex );
+    return apIndex;
+}
+
+
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
