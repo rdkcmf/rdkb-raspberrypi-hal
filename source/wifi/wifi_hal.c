@@ -3126,7 +3126,27 @@ INT wifi_getApIndexForWiFiBand(wifi_band band)
     return apIndex;
 }
 
+INT wifi_getRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
+{
+	return RETURN_OK;
+}
 
+
+INT wifi_getRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
+{
+	return RETURN_OK;
+}
+
+INT wifi_setRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
+{
+        return RETURN_OK;
+}
+
+
+INT wifi_setRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
+{
+        return RETURN_OK;
+}
 
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
