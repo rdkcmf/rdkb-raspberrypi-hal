@@ -455,12 +455,18 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)	//RDKB
 {
     char cmd[MAX_CMD_SIZE]={'\0'};
     char buf[MAX_BUF_SIZE]={'\0'};
+    INT  wlanIndex;
+
+    if( 0 == radioIndex ) // For 2.4 GHz
+        wlanIndex = wifi_getApIndexForWiFiBand(band_2_4);
+    else
+        wlanIndex = wifi_getApIndexForWiFiBand(band_5);
 
     if (NULL == output_bool) 
     {
         return RETURN_ERR;
     } else {
-        sprintf(cmd,"ifconfig|grep wlan%d",radioIndex);
+        sprintf(cmd,"ifconfig|grep wlan%d", wlanIndex);
         _syscmd(cmd,buf,sizeof(buf));
         if(strlen(buf)>0)
             *output_bool=1;
@@ -475,11 +481,17 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)		//RDKB
 {
     char cmd[MAX_CMD_SIZE]={'\0'};
     char buf[MAX_BUF_SIZE]={'\0'};
-    
-    if(enable == TRUE)
-        sprintf(cmd,"ifconfig wlan%d up",radioIndex);
+    INT  wlanIndex;
+
+    if( 0 == radioIndex ) // For 2.4 GHz
+        wlanIndex = wifi_getApIndexForWiFiBand(band_2_4);
     else
-        sprintf(cmd,"ifconfig wlan%d down",radioIndex);
+        wlanIndex = wifi_getApIndexForWiFiBand(band_5);
+
+    if(enable == TRUE)
+        sprintf(cmd,"ifconfig wlan%d up", wlanIndex);
+    else
+        sprintf(cmd,"ifconfig wlan%d down", wlanIndex);
     
     wifi_dbg_printf("\ncmd=%s",cmd);
     _syscmd(cmd,buf,sizeof(buf));
@@ -489,13 +501,16 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)		//RDKB
 
 //Get the Radio enable status
 INT wifi_getRadioStatus(INT radioIndex, BOOL *output_bool)	//RDKB
-{	
-	if (NULL == output_bool) {
-		return RETURN_ERR;
-	} else {
-		*output_bool = FALSE;
-		return RETURN_OK;
-	}
+{
+    INT  retValue;
+    INT  wlanIndex;
+
+    if (NULL == output_bool) {
+        return RETURN_ERR;
+    } else {
+        retValue = wifi_getRadioEnable(wlanIndex, output_bool);
+        return retValue;
+    }
 }
 
 //Get the Radio Interface name from platform, eg "wifi0"
@@ -2317,17 +2332,23 @@ INT wifi_restartHostApd()
 // sets the AP enable status variable for the specified ap.
 INT wifi_setApEnable(INT apIndex, BOOL enable)
 {
-	//Store the AP enable settings and wait for wifi up to apply
-	return RETURN_ERR;
-}      
+    INT retValue;
+
+    //Store the AP enable settings and wait for wifi up to apply
+    retValue = wifi_setRadioEnable(apIndex, enable);
+    return retValue;
+}
 
 // Outputs the setting of the internal variable that is set by wifi_setEnable().  
 INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 {
-	if(!output_bool)
-		return RETURN_ERR;
-	*output_bool=TRUE;	
-	return RETURN_OK;	
+    INT retValue;
+
+    if(!output_bool)
+        return RETURN_ERR;
+
+    retValue = wifi_getRadioEnable(apIndex, output_bool);
+    return retValue;
 }
 
 // Outputs the AP "Enabled" "Disabled" status from driver 
@@ -2335,11 +2356,18 @@ INT wifi_getApStatus(INT apIndex, CHAR *output_string)
 {
 	char cmd[128] = {0};
 	char buf[128] = {0};
-	
-	sprintf(cmd,"ifconfig  | grep %s%d", AP_PREFIX, apIndex);
+	INT  wlanIndex;
+
+
+	if( 0 == apIndex ) // For 2.4 GHz
+		wlanIndex = wifi_getApIndexForWiFiBand(band_2_4);
+	else
+		wlanIndex = wifi_getApIndexForWiFiBand(band_5);
+
+	sprintf(cmd,"iwconfig  | grep wlan%d", wlanIndex);
 	_syscmd(cmd, buf, sizeof(buf));
 	
-	if(strlen(buf)>3) 
+	if(strlen(buf)>3)
 		snprintf(output_string, 32, "Up");
 	else
 		snprintf(output_string, 32, "Disable");
