@@ -3176,6 +3176,16 @@ INT wifi_setRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
         return RETURN_OK;
 }
 
+INT wifi_getApManagementFramePowerControl(INT wlanIndex, INT *ManagementFramePowerControl)
+{
+   return RETURN_OK;
+}
+
+INT wifi_setApManagementFramePowerControl(INT wlanIndex, INT *ManagementFramePowerControl)
+{
+   return RETURN_OK;
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
