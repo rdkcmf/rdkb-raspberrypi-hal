@@ -2697,7 +2697,7 @@ INT wifi_getApWpsEnable(INT apIndex, BOOL *output_bool)
 {
 	if(!output_bool)
 		return RETURN_ERR;
-	*output_bool=TRUE;
+	*output_bool=FALSE;
 	return RETURN_OK;
 }        
 
