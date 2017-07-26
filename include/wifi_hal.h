@@ -5207,8 +5207,9 @@ typedef enum
 */
 INT wifi_getApIndexForWiFiBand(wifi_band band);
 
-
-#define HOSTAPD_FNAME "/etc/hostapd"
+/*hostapd will read file from nvram /etc/usr/ccsp/wifi/ will contains default
+configuration required for Factory Reset*/
+#define HOSTAPD_FNAME "/nvram/hostapd"
 #define SEC_FNAME "/etc/sec_file.txt"
 enum hostap_names
 {
@@ -5217,9 +5218,13 @@ enum hostap_names
 };
 struct params
 {
-     char name[32];
-     char value[32];
+     char name[64];
+     char value[64];
 };
+typedef struct __param_list {
+	unsigned int count;
+	struct params *parameter_list;
+}param_list_t;
 struct hostap_conf
 {
     char ssid[32];
@@ -5355,6 +5360,8 @@ struct hostap_conf
 //INT wifi_getDownLinkQueuePrioritySupport (INT apIndex, INT *supportedPriorityLevels);  //This api is used to get the the number of supported downlink queuing priority levels for each AP/SSID.  If priority queuing levels for AP/SSIDs are not supported, the output should be set to 1. A value of 1 indicates that only the same priority level is supported for all AP/SSIDs.
 //INT wifi_setDownLinkQueuePriority(INT apIndex, INT priorityLevel); // this sets the queue priority level for each AP/SSID in the downlink direction.  It is used with the downlink QOS api to manage priority access to airtime in the downlink direction.  This set must take affect when the api wifi_applySSIDSettings() is called.
 
+int wifi_hostapdWrite(int ap,param_list_t *params);
+int wifi_hostapdRead(int ap,struct params *params,char *output);
 //<< ------------------------------ wifi_ap_hal -----------------------
 
 #else
