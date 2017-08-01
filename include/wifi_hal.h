@@ -446,6 +446,24 @@ typedef struct _wifi_radius_setting_t
 //     wifi_AC_parameters_record_t VO_AcParametersRecord;      // Voice QOS parameters, ACI == 3
 //}  wifi_qos_t;
 
+typedef struct _wifi_apRssi {
+    CHAR  ap_BSSID[6];          //BSSID
+    UINT  ap_channelWidth;       //The channel width; 1 for 20Mhz, 2 for 40 MHz, 4 for 80 MHz, 8 for 160 MHz, 10 for 80+80Mhz
+    INT   ap_rssi;              //RSSI of the neighboring AP in dBm.
+} wifi_apRssi_t;
+
+typedef struct _wifi_channelMetrics {
+    INT  channel_number;        //each channel is only 20MHz bandwidth
+    BOOL channel_in_pool;       //If channel_in_pool is false, driver do not need to scan this channel
+    INT  channel_noise;         //this is used to return the average noise floor in dbm
+    BOOL channel_radar_noise;   //if channel_number is in DFS channel, this is used to return if radar signal is present on DFS channel (5G only)
+    INT  channel_non_80211_noise;           //average non 802.11 noise
+    INT  channel_utilization;   //this is used to return the 802.11 utilization in percent
+    INT  channel_txpower;       //this is used to return the current txpower in dbm on this channel
+    wifi_apRssi_t channel_rssi_list[64];    //RSSI list from the neighbor AP on this channel. The list should be sorted descendly based on ap_rssi. If there are more than 64 AP on this channel, return first 64. 
+    UINT channel_rssi_count;    //RSSI counter in channel_rssi_list
+} wifi_channelMetrics_t;
+
 //<< -------------------------------- wifi_ap_hal --------------------------------------------
 
 //---------------------------------------------------------------------------------------------------

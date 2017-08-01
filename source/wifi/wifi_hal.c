@@ -3573,7 +3573,18 @@ INT wifi_setApManagementFramePowerControl(INT wlanIndex, INT *ManagementFramePow
 {
    return RETURN_OK;
 }
-
+INT wifi_getRadioDcsChannelMetrics(INT radioIndex,wifi_channelMetrics_t channel_matrix[],size_t size)
+{
+   return RETURN_OK;
+}
+INT wifi_setRadioDcsDwelltime(INT radioIndex, INT ms)
+{
+	return RETURN_OK;
+}
+INT wifi_getRadioDcsDwelltime(INT radioIndex, INT *ms)
+{
+	return RETURN_OK;
+}
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
