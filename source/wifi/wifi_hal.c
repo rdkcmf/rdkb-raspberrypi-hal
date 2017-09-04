@@ -425,6 +425,43 @@ INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 	char output[64];
 
 	memset(&list,0,sizeof(list));
+
+    sprintf(param_name,"BASIC_RATES_%d",radioIndex);
+    if(get_param_value(param_name,output)==0)
+	{
+		wifi_dbg_printf("\n[%s]:%s=%s\n",__func__,param_name,output);
+		strcpy( params.name,"basic_rates");
+		strcpy( params.value,output);
+		if(RETURN_ERR == list_add_param(&list,params))
+		{
+			return RETURN_ERR;
+		}
+	}
+    else
+	{
+		wifi_dbg_printf("\n[%s]:Failed to get parameter %s\n",__func__,param_name);
+		return RETURN_ERR;
+	}
+
+    sprintf(param_name,"SUPPORTED_RATES_%d",radioIndex);
+    if(get_param_value(param_name,output)==0)
+	{
+		wifi_dbg_printf("\n[%s]:%s=%s\n",__func__,param_name,output);
+		strcpy( params.name,"supported_rates");
+		strcpy( params.value,output);
+		if(RETURN_ERR == list_add_param(&list,params))
+		{
+			return RETURN_ERR;
+		}
+
+	}
+    else
+	{
+		wifi_dbg_printf("\n[%s]:Failed to get parameter %s\n",__func__,param_name);
+		return RETURN_ERR;
+	}
+
+
 	sprintf(param_name,"RADIO_CHANNEL_%d",radioIndex);
 	if(get_param_value(param_name,output)==0)
 	{
@@ -1515,15 +1552,101 @@ INT wifi_setRadioBeaconPeriod(INT radioIndex, UINT BeaconPeriod)
 //Comma-separated list of strings. The set of data rates, in Mbps, that have to be supported by all stations that desire to join this BSS. The stations have to be able to receive and transmit at each of the data rates listed inBasicDataTransmitRates. For example, a value of "1,2", indicates that stations support 1 Mbps and 2 Mbps. Most control packets use a data rate in BasicDataTransmitRates.	
 INT wifi_getRadioBasicDataTransmitRates(INT radioIndex, CHAR *output)
 {
-	if (NULL == output) 
+	char *temp;
+	char temp_output[128];
+	char temp_TransmitRates[512];
+	struct params params={"basic_rates",""};
+	wifi_hostapdRead(radioIndex,&params,output);
+	if (NULL == output)
 		return RETURN_ERR;
-	snprintf(output, 64, (radioIndex==0)?"1,2":"1.5,150");
+	strcpy(temp_TransmitRates,output);
+	strcpy(temp_output,"");
+	temp = strtok(temp_TransmitRates," ");
+	while(temp!=NULL)
+	{
+		temp[strlen(temp)-1]=0;
+		if((temp[0]=='5') && (temp[1]=='\0'))
+		{
+			temp="5.5";
+		}
+		strcat(temp_output,temp);
+		temp = strtok(NULL," ");
+		if(temp!=NULL)
+		{
+			strcat(temp_output,",");
+		}
+	}
+	strcpy(output,temp_output);
 	return RETURN_OK;
 }
 
 INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 {
-	return RETURN_ERR;
+	int i=0;
+	char *temp;
+	char temp1[128];
+	char temp_output[128];
+	char temp_TransmitRates[128];
+	strcpy(temp_TransmitRates,TransmitRates);
+	for(i=0;i<strlen(temp_TransmitRates);i++)
+	{
+		//if (((temp_TransmitRates[i]>=48) && (temp_TransmitRates[i]<=57)) | (temp_TransmitRates[i]==32))
+		if (((temp_TransmitRates[i]>='0') && (temp_TransmitRates[i]<='9')) | (temp_TransmitRates[i]==' ') | (temp_TransmitRates[i]=='.'))
+		{
+			continue;
+		}
+		else
+		{
+			return RETURN_ERR;
+		}
+	}
+
+	strcpy(temp_output,"");
+	temp = strtok(temp_TransmitRates," ");
+	while(temp!=NULL)
+	{
+		strcpy(temp1,temp);
+		if(radioIndex==1)
+		{
+			if((strcmp(temp,"1")==0) | (strcmp(temp,"2")==0) | (strcmp(temp,"5.5")==0))
+			{
+				return RETURN_ERR;
+			}
+		}
+
+		if(strcmp(temp,"5.5")==0)
+		{
+			strcpy(temp1,"55");
+		}
+		else
+		{
+			strcat(temp1,"0");
+		}
+		strcat(temp_output,temp1);
+		temp = strtok(NULL," ");
+		if(temp!=NULL)
+		{
+			strcat(temp_output," ");
+		}
+	}
+	strcpy(TransmitRates,temp_output);
+	char buf[127]={'\0'};
+	struct params params={'\0'};
+	param_list_t list;
+	strcpy(params.name,"basic_rates");
+	strncpy(params.value,TransmitRates,strlen(TransmitRates));
+	wifi_dbg_printf("\n%s:",__func__);
+	wifi_dbg_printf("\nparams.value=%s\n",params.value);
+	wifi_dbg_printf("\n******************Transmit rates=%s\n",TransmitRates);
+
+	memset(&list,0,sizeof(list));
+	if(RETURN_ERR == list_add_param(&list,params))
+	{
+		return RETURN_ERR;
+	}
+	wifi_hostapdWrite(radioIndex,&list);
+	list_free_param(&list);
+	return RETURN_OK;
 }
 
 
@@ -3544,12 +3667,55 @@ INT wifi_getApIndexForWiFiBand(wifi_band band)
 
 INT wifi_getRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
 {
+	struct params params={"hw_mode",""};
+	wifi_hostapdRead(wlanIndex,&params,output);
+	if (NULL == output)
+		return RETURN_ERR;
+
+	if(strcmp(output,"b")==0)
+	{
+		sprintf(output, "%s", "1,2,5.5,11");
+	}
+	else if (strcmp(output,"a")==0)
+	{
+		sprintf(output, "%s", "6,9,11,12,18,24,36,48,54");
+	}
+	else if ((strcmp(output,"n")==0) | (strcmp(output,"g")==0))
+	{
+		sprintf(output, "%s", "1,2,5.5,6,9,11,12,18,24,36,48,54");
+	}
 	return RETURN_OK;
 }
 
 
 INT wifi_getRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 {
+	char *temp;
+	char temp_output[128];
+	char temp_TransmitRates[128];
+	struct params params={"supported_rates",""};
+	wifi_hostapdRead(wlanIndex,&params,output);
+	if (NULL == output)
+		return RETURN_ERR;
+
+	strcpy(temp_TransmitRates,output);
+	strcpy(temp_output,"");
+	temp = strtok(temp_TransmitRates," ");
+	while(temp!=NULL)
+	{
+		temp[strlen(temp)-1]=0;
+		if((temp[0]=='5') && (temp[1]=='\0'))
+		{
+			temp="5.5";
+		}
+		strcat(temp_output,temp);
+		temp = strtok(NULL," ");
+		if(temp!=NULL)
+		{
+			strcat(temp_output,",");
+		}
+	}
+	strcpy(output,temp_output);
 	return RETURN_OK;
 }
 
@@ -3561,7 +3727,69 @@ INT wifi_setRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
 
 INT wifi_setRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 {
-        return RETURN_OK;
+	int i=0;
+	char *temp;
+	char temp1[128];
+	char temp_output[128];
+	char temp_TransmitRates[128];
+	strcpy(temp_TransmitRates,output);
+
+	for(i=0;i<strlen(temp_TransmitRates);i++)
+	{
+		if (((temp_TransmitRates[i]>='0') && (temp_TransmitRates[i]<='9')) | (temp_TransmitRates[i]==' ') | (temp_TransmitRates[i]=='.'))
+		{
+			continue;
+		}
+		else
+		{
+			return RETURN_ERR;
+		}
+	}
+	strcpy(temp_output,"");
+	temp = strtok(temp_TransmitRates," ");
+	while(temp!=NULL)
+	{
+		strcpy(temp1,temp);
+		if(wlanIndex==1)
+		{
+			if((strcmp(temp,"1")==0) | (strcmp(temp,"2")==0) | (strcmp(temp,"5.5")==0))
+			{
+				return RETURN_ERR;
+			}
+		}
+
+		if(strcmp(temp,"5.5")==0)
+		{
+			strcpy(temp1,"55");
+		}
+		else
+		{
+			strcat(temp1,"0");
+		}
+		strcat(temp_output,temp1);
+		temp = strtok(NULL," ");
+		if(temp!=NULL)
+		{
+			strcat(temp_output," ");
+		}
+	}
+	strcpy(output,temp_output);
+
+	char buf[127]={'\0'};
+	struct params params={'\0'};
+	param_list_t list;
+	strcpy(params.name,"supported_rates");
+	strncpy(params.value,output,strlen(output));
+	wifi_dbg_printf("\n%s:",__func__);
+	wifi_dbg_printf("params.value=%s\n",params.value);
+	memset(&list,0,sizeof(list));
+	if (RETURN_ERR == list_add_param(&list,params))
+	{
+		return RETURN_ERR;
+	}
+	wifi_hostapdWrite(wlanIndex,&list);
+	list_free_param(&list);
+	return RETURN_OK;
 }
 
 INT wifi_getApManagementFramePowerControl(INT wlanIndex, INT *ManagementFramePowerControl)
