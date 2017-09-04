@@ -454,16 +454,17 @@ INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 		}
 		else if (strstr (output,"40") != NULL)
 		{
-			strcpy( params.value,"1");
+			strcpy( params.value,"0");
 		}
 		else if (strstr (output,"80") != NULL)
 		{
-			strcpy( params.value,"2");
+			strcpy( params.value,"1");
 		}
-		else
-		{
-			strcpy( params.value,"3");
-		}
+                else if (strstr (output,"160") != NULL)
+                {
+                        strcpy( params.value,"2");
+                }
+
 		if(RETURN_ERR == list_add_param(&list,params))
 		{
 			list_free_param(&list);
@@ -963,26 +964,82 @@ return RETURN_OK;
 //Set the radio operating mode, and pure mode flag. 
 INT wifi_setRadioChannelMode(INT radioIndex, CHAR *channelMode, BOOL gOnlyFlag, BOOL nOnlyFlag, BOOL acOnlyFlag)	//RDKB
 {
-	if(strstr (channelMode,"20") != NULL )
+          
+	if(strstr (channelMode,"11A") != NULL )
 	{
-		printf("\nChannel Mode is 20\n");
  		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11a (5GHz)\n");
 	}
-	else if (strstr (channelMode,"40") != NULL)
+        else if (strstr (channelMode,"11NAHT20") != NULL)
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11n-20MHz(5GHz)\n");
+        }
+        else if (strstr (channelMode,"11NAHT40PLUS") != NULL)
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11n-40MHz(5GHz)\n");
+        }
+        else if (strstr (channelMode,"11NAHT40MINUS") != NULL)
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11n-40MHz(5GHz)\n");
+        }
+        else if(strstr (channelMode,"11ACVHT20"))
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11ac-20MHz(5GHz)\n");
+        }
+        else if(strstr (channelMode,"11ACVHT40PLUS"))
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11ac-40MHz(5GHz)\n");
+        }
+        else if(strstr (channelMode,"11ACVHT40MINUS"))
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11ac-40MHz(5GHz)\n");
+        }
+        else if(strstr (channelMode,"11ACVHT80"))
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"1");
+                printf("\nChannel Mode is 802.11ac-80MHz(5GHz)\n");
+        }
+        else if(strstr (channelMode,"11ACVHT160"))
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"2");
+                printf("\nChannel Mode is 802.11ac-160MHz(5GHz)\n");
+        }      
+        else if (strstr (channelMode,"11B") != NULL)
 	{
- 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"1");
-		printf("\nChannel Mode is 40\n");
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+		printf("\nChannel Mode is 802.11b(2.4GHz)\n");
 	}
-	else if (strstr (channelMode,"80") != NULL)
+	else if (strstr (channelMode,"11G") != NULL)
 	{
- 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"2");
-		printf("\nChannel Mode is 80\n");
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+		printf("\nChannel Mode is 802.11g(2.4GHz)\n");
 	}
-	else 
+	else if (strstr (channelMode,"11NGHT20") != NULL)
 	{
- 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"3");
-		printf("\nChannel Mode is 160\n");
+ 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+		printf("\nChannel Mode is 802.11n-20MHz(2.4GHz)\n");
 	}
+        else if (strstr (channelMode,"11NGHT40PLUS") != NULL)
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11n-40MHz(2.4GHz)\n");
+        }
+        else if (strstr (channelMode,"11NGHT40MINUS") != NULL)
+        {
+                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                printf("\nChannel Mode is 802.11n-40MHz(2.4GHz)\n");
+        }
+        else 
+        {
+                return RETURN_ERR;
+        }
+
 	return RETURN_OK;
 }
 
@@ -1330,32 +1387,55 @@ INT wifi_setRadioDfsRefreshPeriod(INT radioIndex, ULONG seconds) //Tr181
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) //Tr181
 {
-  struct params params={"vht_oper_chwidth",""};
-  wifi_hostapdRead(radioIndex,&params,output_string);
-  if (NULL == output_string) 
-     return RETURN_ERR;
-  
-  return RETURN_OK;
+	struct params params={"vht_oper_chwidth",""};
+	char output_buf[8]={0};
+	wifi_hostapdRead(radioIndex,&params,output_buf);
+	if (NULL == output_string) 
+			return RETURN_ERR;
+
+	if(strstr (output_buf,"0") != NULL )
+	{
+		strcpy(output_string,"20MHz/40MHz");
+	}
+	else if (strstr (output_buf,"1") != NULL)
+	{
+		strcpy(output_string,"80MHz");
+	}
+	else if (strstr (output_buf,"2") != NULL)
+	{
+		strcpy(output_string,"160MHz");
+	}
+	else if (strstr (output_buf,"3") != NULL)
+	{
+		strcpy(output_string,"80+80");
+	}
+
+	return RETURN_OK;
 }
 
 //Set the Operating Channel Bandwidth.
 INT wifi_setRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) //Tr181	//AP only
 {
-  char buf[127]={'\0'};
-  struct params params={'\0'};
-  param_list_t list;
-  strcpy(params.name,"vht_oper_chwidth");
-  strncpy(params.value,output_string,1);
-  wifi_dbg_printf("\n%s:",__func__);
-  wifi_dbg_printf("params.value=%s\n",params.value);
-  memset(&list,0,sizeof(list));
-  if(RETURN_ERR == list_add_param(&list,params))
-  {
-	return RETURN_ERR;
-  }
-  wifi_hostapdWrite(radioIndex,&list);
-  list_free_param(&list);
-  return RETURN_ERR;
+  
+  	struct params params={'\0'};
+ 	param_list_t list;
+  	strcpy(params.name,"vht_oper_chwidth");
+  	if (NULL == output_string)
+         	return RETURN_ERR;
+       	
+        else{
+        strncpy(params.value,output_string,1);
+        }
+  	wifi_dbg_printf("\n%s:",__func__);
+  	wifi_dbg_printf(params.value);
+  	memset(&list,0,sizeof(list));
+  	if(RETURN_ERR == list_add_param(&list,params))
+  	{
+		return RETURN_ERR;
+  	}
+  	wifi_hostapdWrite(radioIndex,&list);
+  	list_free_param(&list);
+  	return RETURN_OK;
 }
 
 //Get the secondary extension channel position, "AboveControlChannel" or "BelowControlChannel". (this is for 40MHz and 80MHz bandwith only)
