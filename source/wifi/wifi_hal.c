@@ -859,9 +859,9 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
 			return RETURN_ERR;
 		}
 		if (strstr(buf,"2.4") != NULL )
-			strcpy(output_string,"2.4G");
+			strcpy(output_string,"2.4GHz");
 		else if(strstr(buf,"5.") != NULL )
-			strcpy(output_string,"5G_11AC");
+			strcpy(output_string,"5GHz");
 		return RETURN_OK;
 }
 
