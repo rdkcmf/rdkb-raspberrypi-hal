@@ -134,7 +134,24 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
     retBuf[retBufSize-1]=0;
     return RETURN_OK;
 }
+static int writeBandWidth(int radioIndex,char *bw_value)
+{
+        char buf[MAX_BUF_SIZE];
+        char cmd[MAX_CMD_SIZE];
+        sprintf(cmd,"sed -i 's/^SET_BW%d=.*$/SET_BW%d=%s/' %s",radioIndex,radioIndex,bw_value,BW_FNAME);
+        _syscmd(cmd,buf,sizeof(buf));
+        return RETURN_OK;
+}
 
+static int readBandWidth(int radioIndex,char *bw_value)
+{
+        char buf[MAX_BUF_SIZE];
+        char cmd[MAX_CMD_SIZE];
+        sprintf(cmd,"grep 'SET_BW%d=' %s | sed 's/^.*=//'",radioIndex,BW_FNAME);
+        _syscmd(cmd,buf,sizeof(buf));
+        strcpy(bw_value,buf);
+        return RETURN_OK;
+}
 /**************************************************************************/
 /*! \fn void add_ifnames_in_bridge()
  **************************************************************************
@@ -487,10 +504,12 @@ INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 		strcpy( params.name,"vht_oper_chwidth");
 		if(strstr (output,"20") != NULL )
 		{
+			writeBandWidth(radioIndex,"20MHz");
 			strcpy( params.value,"0");
 		}
 		else if (strstr (output,"40") != NULL)
-		{
+		{	
+			writeBandWidth(radioIndex,"40MHz");
 			strcpy( params.value,"0");
 		}
 		else if (strstr (output,"80") != NULL)
@@ -1004,36 +1023,43 @@ INT wifi_setRadioChannelMode(INT radioIndex, CHAR *channelMode, BOOL gOnlyFlag, 
           
 	if(strstr (channelMode,"11A") != NULL )
 	{
+		writeBandWidth(radioIndex,"20MHz");
  		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11a (5GHz)\n");
 	}
         else if (strstr (channelMode,"11NAHT20") != NULL)
         {
+                writeBandWidth(radioIndex,"20MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11n-20MHz(5GHz)\n");
         }
         else if (strstr (channelMode,"11NAHT40PLUS") != NULL)
         {
+                writeBandWidth(radioIndex,"40MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11n-40MHz(5GHz)\n");
         }
         else if (strstr (channelMode,"11NAHT40MINUS") != NULL)
         {
+                writeBandWidth(radioIndex,"40MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11n-40MHz(5GHz)\n");
         }
         else if(strstr (channelMode,"11ACVHT20"))
         {
+                writeBandWidth(radioIndex,"20MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11ac-20MHz(5GHz)\n");
         }
         else if(strstr (channelMode,"11ACVHT40PLUS"))
         {
+                writeBandWidth(radioIndex,"40MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11ac-40MHz(5GHz)\n");
         }
         else if(strstr (channelMode,"11ACVHT40MINUS"))
         {
+                writeBandWidth(radioIndex,"40MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11ac-40MHz(5GHz)\n");
         }
@@ -1049,26 +1075,31 @@ INT wifi_setRadioChannelMode(INT radioIndex, CHAR *channelMode, BOOL gOnlyFlag, 
         }      
         else if (strstr (channelMode,"11B") != NULL)
 	{
- 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+ 	        writeBandWidth(radioIndex,"20MHz");
+          	wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
 		printf("\nChannel Mode is 802.11b(2.4GHz)\n");
 	}
 	else if (strstr (channelMode,"11G") != NULL)
 	{
- 		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+ 	        writeBandWidth(radioIndex,"20MHz");
+          	wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
 		printf("\nChannel Mode is 802.11g(2.4GHz)\n");
 	}
 	else if (strstr (channelMode,"11NGHT20") != NULL)
 	{
+ 		writeBandWidth(radioIndex,"20MHz");
  		wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
 		printf("\nChannel Mode is 802.11n-20MHz(2.4GHz)\n");
 	}
         else if (strstr (channelMode,"11NGHT40PLUS") != NULL)
         {
-                wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
+                writeBandWidth(radioIndex,"40MHz");
+	        wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11n-40MHz(2.4GHz)\n");
         }
         else if (strstr (channelMode,"11NGHT40MINUS") != NULL)
         {
+                writeBandWidth(radioIndex,"40MHz");
                 wifi_setRadioOperatingChannelBandwidth(radioIndex,"0");
                 printf("\nChannel Mode is 802.11n-40MHz(2.4GHz)\n");
         }
@@ -1426,13 +1457,15 @@ INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) 
 {
 	struct params params={"vht_oper_chwidth",""};
 	char output_buf[8]={0};
+        char bw_value[10];	
 	wifi_hostapdRead(radioIndex,&params,output_buf);
+	readBandWidth(radioIndex,bw_value);
 	if (NULL == output_string) 
 			return RETURN_ERR;
-
+        
 	if(strstr (output_buf,"0") != NULL )
 	{
-		strcpy(output_string,"20MHz/40MHz");
+		strcpy(output_string,bw_value);
 	}
 	else if (strstr (output_buf,"1") != NULL)
 	{
@@ -1446,6 +1479,10 @@ INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) 
 	{
 		strcpy(output_string,"80+80");
 	}
+        else
+        {
+                strcpy(output_string,"Auto");
+        }
 
 	return RETURN_OK;
 }
