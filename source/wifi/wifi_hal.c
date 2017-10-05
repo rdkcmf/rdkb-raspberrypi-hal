@@ -3426,100 +3426,71 @@ INT wifi_cancelApWPS(INT apIndex)
 //Device.WiFi.AccessPoint.{i}.AssociatedDevice.*
 //HAL funciton should allocate an data structure array, and return to caller with "associated_dev_array"
 INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_t **associated_dev_array, UINT *output_array_size)
-{	
-	char cmd[256];    
-    char buf[2048];
-    wifi_associated_dev_t *dev=NULL;
-    unsigned int assoc_cnt = 0;
-    char *pos;
-    FILE *f;
-	char *mac=NULL;
-	char *aid =NULL;
-	char *chan = NULL;
-	char *txrate = NULL;
-	char *rxrate = NULL;
-	char *rssi = NULL;
-    
-    *output_array_size = 0;
-    *associated_dev_array = NULL;
-   
-    if (apIndex < 0) {
-        return RETURN_ERR;
-    }
+{
+	FILE *f;
+	int read_flag=0, auth_temp=0, mac_temp=0,i=0;
+	char cmd[256], buf[2048];
+	char *param , *value, *line=NULL;
+	size_t len = 0;
+	ssize_t nread;
+	wifi_associated_dev_t *dev=NULL;
+	*associated_dev_array = NULL;
+	sprintf(cmd, "hostapd_cli all_sta -i wlan%d | grep AUTHORIZED | wc -l" , apIndex);
+	_syscmd(cmd,buf,sizeof(buf));
+	*output_array_size = atoi(buf);
 
-    sprintf(cmd,  "wlanconfig %s%d list sta  2>/dev/null | grep -v HTCAP >/tmp/ap_%d_cli.txt; cat /tmp/ap_%d_cli.txt | wc -l" , AP_PREFIX, apIndex, apIndex, apIndex);
-    _syscmd(cmd,buf,sizeof(buf));
-
-    *output_array_size = atoi(buf);
-
-    if (*output_array_size <= 0) 
+	if (*output_array_size <= 0)
 		return RETURN_OK;
-	
+
 	dev=(wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
-	*associated_dev_array = dev;      
+	*associated_dev_array = dev;
+	sprintf(cmd, "hostapd_cli all_sta -i wlan%d > /tmp/connected_devices.txt" , apIndex);
+	_syscmd(cmd,buf,sizeof(buf));
+	f = fopen("/tmp/connected_devices.txt", "r");
+	if (f==NULL)
+	{
+		*output_array_size=0;
+		return RETURN_ERR;
+	}
+	while ((nread = getline(&line, &len, f)) != -1)
+	{
+		param = strtok(line,"=");
+		value = strtok(NULL,"=");
 
-    sprintf(cmd, "cat /tmp/ap_%d_cli.txt" , apIndex);
-    if ((f = popen(cmd, "r")) == NULL) {
-        printf("%s: popen %s error\n",__func__, cmd);
-        return -1;
-    }
-
-    while (!feof(f)) {
-        pos = buf;
-        *pos = 0;
-        fgets(pos,200,f);
-
-        if (strlen(pos) == 0) {
-            break;
-        }
-        if (assoc_cnt >= *output_array_size) {
-            break;
-        }
-         
-		char *mac=strtok(pos," ");
-		char *aid = strtok('\0'," ");
-		char *chan = strtok('\0'," ");
-		char *txrate = strtok('\0'," ");
-		char *rxrate = strtok('\0'," ");
-		char *rssi = strtok('\0'," ");
-
-		// Should be Mac Address line
-		if (mac) { 
-			sscanf(mac, "%x:%x:%x:%x:%x:%x",
-				   (unsigned int *)&dev[assoc_cnt].cli_MACAddress[0], 
-				   (unsigned int *)&dev[assoc_cnt].cli_MACAddress[1], 
-				   (unsigned int *)&dev[assoc_cnt].cli_MACAddress[2], 
-				   (unsigned int *)&dev[assoc_cnt].cli_MACAddress[3], 
-				   (unsigned int *)&dev[assoc_cnt].cli_MACAddress[4], 
-				   (unsigned int *)&dev[assoc_cnt].cli_MACAddress[5] );
+		if( strcmp("flags",param) == 0 )
+		{
+			value[strlen(value)-1]='\0';
+			if(strstr (value,"AUTHORIZED") != NULL )
+			{
+				dev[auth_temp].cli_AuthenticationState = 1;
+				dev[auth_temp].cli_Active = 1;
+				dev[auth_temp].cli_SignalStrength=-100;
+				auth_temp++;
+				read_flag=1;
+			}
 		}
-
-		memset(dev[assoc_cnt].cli_IPAddress, 0, 64);
-		dev[assoc_cnt].cli_AuthenticationState = 1;
-
-		dev[assoc_cnt].cli_AuthenticationState =  (rssi != NULL) ? atoi(rssi) - 100 : 0;
-		dev[assoc_cnt].cli_LastDataDownlinkRate =  (txrate != NULL) ? atoi(strtok(txrate,"M")) : 0; 
-		dev[assoc_cnt].cli_LastDataUplinkRate =  (rxrate != NULL) ? atoi(strtok(rxrate,"M")) : 0;
-		
-		//zqiu: TODO: fill up the following items
-		dev[assoc_cnt].cli_SignalStrength=-100;
-		dev[assoc_cnt].cli_Retransmissions=0;
-		dev[assoc_cnt].cli_Active=TRUE;
-		strncpy(dev[assoc_cnt].cli_OperatingStandard, "", 64);
-		strncpy(dev[assoc_cnt].cli_OperatingChannelBandwidth, "20MHz", 64);
-		dev[assoc_cnt].cli_SNR=20;
-		strncpy(dev[assoc_cnt].cli_InterferenceSources, "", 64);
-		dev[assoc_cnt].cli_DataFramesSentAck=0;
-		dev[assoc_cnt].cli_DataFramesSentNoAck=0;
-		dev[assoc_cnt].cli_BytesSent=0;
-		dev[assoc_cnt].cli_BytesReceived=0;
-		dev[assoc_cnt].cli_RSSI=30;
-		
-		assoc_cnt++;      
-        
-    }
-    pclose(f);
-
+		if(read_flag==1)
+		{
+			if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
+			{
+				value[strlen(value)-1]='\0';
+				sscanf(value, "%x:%x:%x:%x:%x:%x",
+						(unsigned int *)&dev[mac_temp].cli_MACAddress[0],
+						(unsigned int *)&dev[mac_temp].cli_MACAddress[1],
+						(unsigned int *)&dev[mac_temp].cli_MACAddress[2],
+						(unsigned int *)&dev[mac_temp].cli_MACAddress[3],
+						(unsigned int *)&dev[mac_temp].cli_MACAddress[4],
+						(unsigned int *)&dev[mac_temp].cli_MACAddress[5] );
+				mac_temp++;
+				read_flag=0;
+			}
+		}
+	}
+	*output_array_size = auth_temp;
+	auth_temp=0;
+	mac_temp=0;
+	free(line);
+	fclose(f);
 	return RETURN_OK;
 }
 
