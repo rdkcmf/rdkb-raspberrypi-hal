@@ -3435,7 +3435,7 @@ INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_
 	ssize_t nread;
 	wifi_associated_dev_t *dev=NULL;
 	*associated_dev_array = NULL;
-	sprintf(cmd, "hostapd_cli all_sta -i wlan%d | grep AUTHORIZED | wc -l" , apIndex);
+	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta | grep AUTHORIZED | wc -l" , apIndex);
 	_syscmd(cmd,buf,sizeof(buf));
 	*output_array_size = atoi(buf);
 
@@ -3444,7 +3444,7 @@ INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_
 
 	dev=(wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
 	*associated_dev_array = dev;
-	sprintf(cmd, "hostapd_cli all_sta -i wlan%d > /tmp/connected_devices.txt" , apIndex);
+	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta > /tmp/connected_devices.txt" , apIndex);
 	_syscmd(cmd,buf,sizeof(buf));
 	f = fopen("/tmp/connected_devices.txt", "r");
 	if (f==NULL)
@@ -3464,7 +3464,6 @@ INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_
 			{
 				dev[auth_temp].cli_AuthenticationState = 1;
 				dev[auth_temp].cli_Active = 1;
-				dev[auth_temp].cli_SignalStrength=-100;
 				auth_temp++;
 				read_flag=1;
 			}
