@@ -944,7 +944,7 @@ INT wifi_getRadioSupportedStandards(INT radioIndex, CHAR *output_string) //Tr181
 INT wifi_getRadioStandard(INT radioIndex, CHAR *output_string, BOOL *gOnly, BOOL *nOnly, BOOL *acOnly)	//RDKB
 {
     struct params params={"hw_mode",""};
-    if (NULL == output_string) 
+    if ((NULL == output_string) && (NULL == gOnly) && (NULL == nOnly) && (NULL == acOnly)) 
         return RETURN_ERR;
     
     memset(output_string,'\0',4);
@@ -1636,9 +1636,12 @@ INT wifi_getRadioBasicDataTransmitRates(INT radioIndex, CHAR *output)
 	char temp_output[128];
 	char temp_TransmitRates[512];
 	struct params params={"basic_rates",""};
-	wifi_hostapdRead(radioIndex,&params,output);
+
 	if (NULL == output)
 		return RETURN_ERR;
+
+	wifi_hostapdRead(radioIndex,&params,output);
+
 	strcpy(temp_TransmitRates,output);
 	strcpy(temp_output,"");
 	temp = strtok(temp_TransmitRates," ");
@@ -1667,6 +1670,10 @@ INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 	char temp1[128];
 	char temp_output[128];
 	char temp_TransmitRates[128];
+
+        if(NULL == TransmitRates)
+            return RETURN_ERR;
+
 	strcpy(temp_TransmitRates,TransmitRates);
 	for(i=0;i<strlen(temp_TransmitRates);i++)
 	{
@@ -1872,6 +1879,10 @@ INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
   char *ch;
   struct params params;
   param_list_t list;
+
+  if(NULL == ssid_string)
+      return RETURN_ERR;
+
   strcpy(params.name,"ssid");
   strcpy(params.value,ssid_string);
   printf("\n%s\n",__func__);
@@ -3172,6 +3183,9 @@ INT wifi_setApSecurityPreSharedKey(INT apIndex, CHAR *preSharedKey)
 	struct params params={'\0'};
 	int ret;
 	param_list_t list;
+
+        if(NULL == preSharedKey)
+            return RETURN_ERR;
 	strcpy(params.name,"wpa_passphrase");
 	strcpy(params.value,preSharedKey);
 	if(strlen(preSharedKey)<8 || strlen(preSharedKey)>63)
@@ -3725,9 +3739,11 @@ INT wifi_getApIndexForWiFiBand(wifi_band band)
 INT wifi_getRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
 {
 	struct params params={"hw_mode",""};
-	wifi_hostapdRead(wlanIndex,&params,output);
+
 	if (NULL == output)
 		return RETURN_ERR;
+
+	wifi_hostapdRead(wlanIndex,&params,output);
 
 	if(strcmp(output,"b")==0)
 	{
@@ -3751,9 +3767,11 @@ INT wifi_getRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 	char temp_output[128];
 	char temp_TransmitRates[128];
 	struct params params={"supported_rates",""};
-	wifi_hostapdRead(wlanIndex,&params,output);
+
 	if (NULL == output)
 		return RETURN_ERR;
+
+	wifi_hostapdRead(wlanIndex,&params,output);
 
 	strcpy(temp_TransmitRates,output);
 	strcpy(temp_output,"");
@@ -3789,6 +3807,10 @@ INT wifi_setRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 	char temp1[128];
 	char temp_output[128];
 	char temp_TransmitRates[128];
+
+        if(NULL == output)
+            return RETURN_ERR;
+
 	strcpy(temp_TransmitRates,output);
 
 	for(i=0;i<strlen(temp_TransmitRates);i++)
