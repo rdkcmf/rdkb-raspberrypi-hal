@@ -440,7 +440,6 @@ INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 	param_list_t list;
 	ULONG channel=0;
 	char output[64];
-
 	memset(&list,0,sizeof(list));
 
     sprintf(param_name,"BASIC_RATES_%d",radioIndex);
@@ -894,24 +893,36 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
         char cmd[MAX_CMD_SIZE]={'\0'};
         char *ch=NULL;
         char *ch2=NULL;
+	char ch1[5]="0";
 
-		sprintf(cmd,"grep 'channel=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
+	sprintf(cmd,"grep 'channel=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
         
-   		if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
-	    {
-    	    printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+	if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+        {
+                printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
 	        return RETURN_ERR;
-	    }
+        }
+	
         ch=strchr(buf,'\n');
         *ch='\0';
-        ch=strchr(buf,'=');
+	ch=strchr(buf,'=');
         if(ch==NULL)
           return RETURN_ERR;
-
+	ch++;
 	
-        ch++;
-		sprintf(cmd,"grep 'interface=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
+	if(strlen(ch)==1)
+	{
+	   	strcat(ch1,ch);
 
+	}
+	else
+	{
+		strcpy(ch1,ch);
+	}
+
+
+
+	sprintf(cmd,"grep 'interface=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
         if(_syscmd(cmd,str,64) ==  RETURN_ERR)
         {
                 wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
@@ -930,22 +941,29 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
         }
         else
          wifi_dbg_printf("%s",ch2+1);
-
+	ch2++;
 		
-        ch2++;
+       
 
-
-        sprintf(cmd,"iwlist %s frequency|grep 'Channel %s'",ch2,ch);
-
+        sprintf(cmd,"iwlist %s frequency|grep 'Channel %s'",ch2,ch1);
         memset(buf,'\0',sizeof(buf));
         if(_syscmd(cmd,buf,sizeof(buf))==RETURN_ERR)
-		{
-			wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
-			return RETURN_ERR;
-		}
+	{
+		wifi_dbg_printf("\nError %d:%s:%s\n",__LINE__,__func__,__FILE__);
+		return RETURN_ERR;
+	}
 
-		strcpy(output_string,buf);
-		return RETURN_OK;
+
+	if(strstr(buf,"2.4")!=NULL)
+	{
+		strcpy(output_string,"2.4GHz");
+	}
+	if(strstr(buf,"5.")!=NULL)
+        {
+                strcpy(output_string,"5GHz");
+        }
+	
+	return RETURN_OK;
 }
 
 //Get the Supported Radio Mode. eg: "b,g,n"; "n,ac"
