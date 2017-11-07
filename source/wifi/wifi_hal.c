@@ -713,6 +713,9 @@ INT wifi_setRadioCountryCode(INT radioIndex, CHAR *CountryCode)
 //Get the total number of radios in this wifi subsystem
 INT wifi_getRadioNumberOfEntries(ULONG *output) //Tr181
 {
+        if (NULL == output)
+		return RETURN_ERR;
+
 	*output=2;
 	return RETURN_OK;
 }
@@ -827,6 +830,10 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
         char cmd[MAX_CMD_SIZE]={'\0'};
         char *ch=NULL;
         char *ch2=NULL;
+
+        if (NULL == output_string)
+	        return RETURN_ERR;
+
 
 		sprintf(cmd,"grep 'channel=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
         
