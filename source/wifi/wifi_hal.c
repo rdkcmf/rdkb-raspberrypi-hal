@@ -1181,12 +1181,21 @@ INT wifi_setRadioChannel(INT radioIndex, ULONG channel)	//RDKB	//AP only
   {
      return RETURN_ERR;
   }
+  switch(channel)
+  {
+        case 40: case 48: case 56: case 64: case 104: case 112: case 120: case 128: case 136: case 153: case 161:
+      	    wifi_setRadioExtChannel(radioIndex,"BelowControlChannel");
+            break;
+      
+        case 36: case 44: case 52: case 60: case 100: case 108: case 116: case 124: case 132: case 149: case 157: 
+	    wifi_setRadioExtChannel(radioIndex,"AboveControlChannel");
+            break;
+  }
   wifi_hostapdWrite(radioIndex,&list);
   list_free_param(&list);
-
-  //Set to wifi config only. Wait for wifi reset or wifi_pushRadioChannel to apply.
   return RETURN_OK;
-}
+  //Set to wifi config only. Wait for wifi reset or wifi_pushRadioChannel to apply.
+  }
 
 //Enables or disables a driver level variable to indicate if auto channel selection is enabled on this radio
 //This "auto channel" means the auto channel selection when radio is up. (which is different from the dynamic channel/frequency selection (DFC/DCS))
@@ -1542,8 +1551,34 @@ INT wifi_getRadioExtChannel(INT radioIndex, CHAR *output_string) //Tr181
 
 //Set the extension channel.
 INT wifi_setRadioExtChannel(INT radioIndex, CHAR *string) //Tr181	//AP only
-{
-	return RETURN_ERR;
+{        
+
+	 struct params params={'\0'};
+         char ext_channel[127]={'\0'};
+ 	 param_list_t list;
+ 	 strcpy(params.name,"ht_capab");
+ 	 if(NULL!= strstr(string,"Above"))
+	 {
+         	strcpy(ext_channel,"\[HT40\]\[SHORT-GI-20\]\[HT40+\]");           //special characters that's why '\' is used
+	 }
+	 else if(NULL!= strstr(string,"Below"))
+	 {
+		strcpy(ext_channel,"\[HT40\]\[SHORT-GI-20\]\[HT40-\]");	 
+	 }
+
+	 strncpy(params.value,ext_channel,strlen(ext_channel));
+ 	 memset(&list,0,sizeof(list));
+ 	 if(RETURN_ERR == list_add_param(&list,params))
+ 	 {
+                return RETURN_ERR;
+ 	 }
+ 	 wifi_hostapdWrite(radioIndex,&list);
+ 	 list_free_param(&list);
+
+  //Set to wifi config only. Wait for wifi reset or wifi_pushRadioChannel to apply.
+ 	 return RETURN_OK;
+
+	
 }
 
 //Get the guard interval value. eg "400nsec" or "800nsec" 
