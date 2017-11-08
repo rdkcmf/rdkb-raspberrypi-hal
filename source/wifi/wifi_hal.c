@@ -149,7 +149,18 @@ static int readBandWidth(int radioIndex,char *bw_value)
         char cmd[MAX_CMD_SIZE];
         sprintf(cmd,"grep 'SET_BW%d=' %s | sed 's/^.*=//'",radioIndex,BW_FNAME);
         _syscmd(cmd,buf,sizeof(buf));
-        strcpy(bw_value,buf);
+        if(NULL!=strstr(buf,"20MHz"))
+        {
+                strcpy(bw_value,"20MHz");
+        }
+        else if(NULL!=strstr(buf,"40MHz"))
+        {
+                strcpy(bw_value,"40MHz");
+        }
+  	else
+        {
+        	return RETURN_ERR;
+        }
         return RETURN_OK;
 }
 /**************************************************************************/
