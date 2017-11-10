@@ -147,6 +147,13 @@ int wifi_hostapdWrite(int ap,param_list_t *list)
 			printf("\ncur_val for wpa=%s wpa_val=%s\ncmd=%s\n",cur_val,wpa_val,cmd);
 			_syscmd(cmd,buf,sizeof(buf));
 		}
+		else if(strncmp(list->parameter_list[loop_ctr].name,"ht_capab",strlen("ht_capab")) ==0 )
+		{
+		        memset(cmd,'\0',sizeof(cmd));
+			sprintf(cmd,"sed -i 's/%s.*$/%s=%s/' %s%d.conf",list->parameter_list[loop_ctr].name,list->parameter_list[loop_ctr].name,list->parameter_list[loop_ctr].value,HOSTAPD_FNAME,ap);
+			_syscmd(cmd,buf,sizeof(buf));
+			
+		}
 		else
 		{
 			wifi_hostapdRead(ap,&(list->parameter_list[loop_ctr]),cur_val);
