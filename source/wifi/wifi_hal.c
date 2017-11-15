@@ -790,15 +790,13 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)		//RDKB
 //Get the Radio enable status
 INT wifi_getRadioStatus(INT radioIndex, BOOL *output_bool)	//RDKB
 {
-    INT  retValue;
-    INT  wlanIndex;
 
     if (NULL == output_bool) {
         return RETURN_ERR;
     } else {
-        retValue = wifi_getRadioEnable(wlanIndex, output_bool);
-        return retValue;
+        wifi_getRadioEnable(radioIndex, output_bool);
     }
+    return RETURN_OK;
 }
 
 //Get the Radio Interface name from platform, eg "wifi0"
