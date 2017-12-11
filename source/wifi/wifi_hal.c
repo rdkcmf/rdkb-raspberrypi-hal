@@ -3997,6 +3997,10 @@ INT wifi_getRadioDcsDwelltime(INT radioIndex, INT *ms)
 {
 	return RETURN_OK;
 }
+INT wifi_setRadioDcsScanning(INT radioIndex, BOOL enable)
+{
+	return RETURN_OK;
+}
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
@@ -4114,5 +4118,7 @@ int main(int argc,char **argv)
 	}
 	return 0;
 }
+
+
 #endif
 //<<
