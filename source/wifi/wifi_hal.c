@@ -91,8 +91,10 @@
 
 #ifdef WIFI_DEBUG
 #define wifi_dbg_printf printf
+#define WIFI_ENTRY_EXIT_DEBUG printf
 #else
 #define wifi_dbg_printf(format,args...) printf("")
+#define WIFI_ENTRY_EXIT_DEBUG(format,args...) printf("")
 #endif
 
 #define HOSTAPD_CONF_0 "/nvram/hostapd0.conf"
@@ -105,6 +107,7 @@
 
 int _syscmd(char *cmd, char *retBuf, int retBufSize)
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     FILE *f;
     char *ptr = retBuf;
     int bufSize=retBufSize, bufbytes=0, readbytes=0;
@@ -132,6 +135,7 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
     }
     pclose(f);
     retBuf[retBufSize-1]=0;
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 static int writeBandWidth(int radioIndex,char *bw_value)
@@ -172,6 +176,7 @@ static int readBandWidth(int radioIndex,char *bw_value)
  **************************************************************************/
 static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     char *list = ifnames_list;
     char command[MAX_BUF_SIZE] = "";
     char out[MAX_BUF_SIZE] = "";
@@ -197,6 +202,7 @@ static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
         system(command);
         temp = strtok(NULL,", ");
     }
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -210,6 +216,7 @@ static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
  **************************************************************************/
 static INT list_add_param(param_list_t *list,struct params params)
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     if(list->parameter_list==NULL)
     {
 
@@ -239,7 +246,8 @@ static INT list_add_param(param_list_t *list,struct params params)
             return RETURN_ERR;
         }
     }
-return RETURN_OK;
+   WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+   return RETURN_OK;
 }
 
 /**************************************************************************/
@@ -264,6 +272,7 @@ static void list_free_param(param_list_t *list)
  **************************************************************************/
 static INT get_param_value(char *parameter, char *output)
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__); 
     FILE *f;
     char *line = NULL;
     size_t len = 0;
@@ -286,6 +295,7 @@ static INT get_param_value(char *parameter, char *output)
      }
      free(line);
      fclose(f);
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -297,6 +307,7 @@ static INT get_param_value(char *parameter, char *output)
  **************************************************************************/
 static INT prepare_hostapd_conf()
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char cmd[128];
     /* check  /usr/ccsp/wifi/hostapd0.conf and /usr/ccsp/wifi/hostapd0.conf exists or not */
 	if(( access(DEF_HOSTAPD_CONF_0, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_1, F_OK) != -1 ))
@@ -331,6 +342,7 @@ static INT prepare_hostapd_conf()
 		sprintf(cmd, "cp %s %s",DEF_HOSTAPD_CONF_1,HOSTAPD_CONF_1);
 		system(cmd);
 	}
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 void wifi_newApAssociatedDevice_callback_register(wifi_newApAssociatedDevice_callback callback_proc)
@@ -446,6 +458,7 @@ INT wifi_factoryResetRadios()
 */
 INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char param_name[64];
 	struct params params={0};
 	param_list_t list;
@@ -545,7 +558,7 @@ INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 	}
 	wifi_hostapdWrite(radioIndex,&list);
 	list_free_param(&list);
-
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -577,6 +590,7 @@ INT wifi_initRadio(INT radioIndex)
 // Initializes the wifi subsystem (all radios)
 INT wifi_init()                            //RDKB
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     char interface[MAX_BUF_SIZE]={'\0'};
     char bridge_name[MAX_BUF_SIZE]={'\0'};
     INT len=0;
@@ -617,6 +631,7 @@ INT wifi_init()                            //RDKB
     #ifdef USE_HOSTAPD_STRUCT
     read_hostapd_all_aps();
     #endif
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -767,6 +782,7 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)	//RDKB
 //Set the Radio enable config parameter
 INT wifi_setRadioEnable(INT radioIndex, BOOL enable)		//RDKB
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     char cmd[MAX_CMD_SIZE]={'\0'};
     char buf[MAX_BUF_SIZE]={'\0'};
     INT  wlanIndex;
@@ -784,6 +800,7 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)		//RDKB
     wifi_dbg_printf("\ncmd=%s",cmd);
     _syscmd(cmd,buf,sizeof(buf));
     //Set wifi config. Wait for wifi reset to apply
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -812,9 +829,10 @@ INT wifi_getRadioIfName(INT radioIndex, CHAR *output_string) //Tr181
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioMaxBitRate(INT radioIndex, CHAR *output_string)	//RDKB
 {
-	char cmd[64];
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+    char cmd[64];
     char buf[1024];
-	int apIndex;
+    int apIndex;
 	
     if (NULL == output_string) 
 		return RETURN_ERR;
@@ -825,7 +843,7 @@ INT wifi_getRadioMaxBitRate(INT radioIndex, CHAR *output_string)	//RDKB
     _syscmd(cmd,buf, sizeof(buf));
 
     snprintf(output_string, 64, "%s", buf);
-	
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -834,6 +852,7 @@ INT wifi_getRadioMaxBitRate(INT radioIndex, CHAR *output_string)	//RDKB
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//RDKB
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char buf[MAX_BUF_SIZE]={'\0'};
         char str[MAX_BUF_SIZE]={'\0'};
         char cmd[MAX_CMD_SIZE]={'\0'};
@@ -896,14 +915,16 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
 			strcpy(output_string,"2.4GHz");
 		else if(strstr(buf,"5.") != NULL )
 			strcpy(output_string,"5GHz");
-		return RETURN_OK;
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
+	
 }
 
 //Get the frequency band at which the radio is operating, eg: "2.4GHz"
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //Tr181
 {
-	
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char buf[MAX_BUF_SIZE]={'\0'};
         char str[MAX_BUF_SIZE]={'\0'};
         char cmd[MAX_CMD_SIZE]={'\0'};
@@ -978,7 +999,7 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
         {
                 strcpy(output_string,"5GHz");
         }
-	
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -996,6 +1017,7 @@ INT wifi_getRadioSupportedStandards(INT radioIndex, CHAR *output_string) //Tr181
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioStandard(INT radioIndex, CHAR *output_string, BOOL *gOnly, BOOL *nOnly, BOOL *acOnly)	//RDKB
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     struct params params={"hw_mode",""};
     if ((NULL == output_string) && (NULL == gOnly) && (NULL == nOnly) && (NULL == acOnly)) 
         return RETURN_ERR;
@@ -1047,14 +1069,15 @@ INT wifi_getRadioStandard(INT radioIndex, CHAR *output_string, BOOL *gOnly, BOOL
         *acOnly=FALSE;    
     }
 #endif
-return RETURN_OK;
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+    return RETURN_OK;
 
 }
 
 //Set the radio operating mode, and pure mode flag. 
 INT wifi_setRadioChannelMode(INT radioIndex, CHAR *channelMode, BOOL gOnlyFlag, BOOL nOnlyFlag, BOOL acOnlyFlag)	//RDKB
 {
-          
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);  
         if (strcmp (channelMode,"11A") == 0)
         {
 		writeBandWidth(radioIndex,"20MHz");
@@ -1141,7 +1164,7 @@ INT wifi_setRadioChannelMode(INT radioIndex, CHAR *channelMode, BOOL gOnlyFlag, 
         {
                 return RETURN_ERR;
         }
-
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -1186,6 +1209,7 @@ INT wifi_getRadioChannel(INT radioIndex,ULONG *output_ulong)	//RDKB
 //Set the running channel number 
 INT wifi_setRadioChannel(INT radioIndex, ULONG channel)	//RDKB	//AP only
 {
+  WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
   struct params params={'\0'};
   char str_channel[3]={'\0'};
   param_list_t list;
@@ -1209,6 +1233,7 @@ INT wifi_setRadioChannel(INT radioIndex, ULONG channel)	//RDKB	//AP only
   }
   wifi_hostapdWrite(radioIndex,&list);
   list_free_param(&list);
+  WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
   return RETURN_OK;
   //Set to wifi config only. Wait for wifi reset or wifi_pushRadioChannel to apply.
   }
@@ -1250,6 +1275,7 @@ INT wifi_setApEnableOnLine(ULONG wlanIndex,BOOL enable)
 
 INT wifi_factoryResetAP(int apIndex)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char param_name[64];
 	ULONG channel=0;
 	char output[64];
@@ -1407,6 +1433,7 @@ INT wifi_factoryResetAP(int apIndex)
 
 	wifi_hostapdWrite(apIndex,&list);
 	list_free_param(&list);
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -1498,6 +1525,7 @@ INT wifi_setRadioDfsRefreshPeriod(INT radioIndex, ULONG seconds) //Tr181
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) //Tr181
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	struct params params={"vht_oper_chwidth",""};
 	char output_buf[8]={0};
         char bw_value[10];	
@@ -1526,14 +1554,14 @@ INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) 
         {
                 strcpy(output_string,"Auto");
         }
-
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
 //Set the Operating Channel Bandwidth.
 INT wifi_setRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) //Tr181	//AP only
 {
-  
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
   	struct params params={'\0'};
  	param_list_t list;
   	strcpy(params.name,"vht_oper_chwidth");
@@ -1552,6 +1580,7 @@ INT wifi_setRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string) 
   	}
   	wifi_hostapdWrite(radioIndex,&list);
   	list_free_param(&list);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
   	return RETURN_OK;
 }
 
@@ -1568,7 +1597,7 @@ INT wifi_getRadioExtChannel(INT radioIndex, CHAR *output_string) //Tr181
 //Set the extension channel.
 INT wifi_setRadioExtChannel(INT radioIndex, CHAR *string) //Tr181	//AP only
 {        
-
+         WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	 struct params params={'\0'};
          char ext_channel[127]={'\0'};
  	 param_list_t list;
@@ -1592,6 +1621,7 @@ INT wifi_setRadioExtChannel(INT radioIndex, CHAR *string) //Tr181	//AP only
  	 list_free_param(&list);
 
   //Set to wifi config only. Wait for wifi reset or wifi_pushRadioChannel to apply.
+	 WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
  	 return RETURN_OK;
 
 	
@@ -1738,6 +1768,7 @@ INT wifi_setRadioBeaconPeriod(INT radioIndex, UINT BeaconPeriod)
 //Comma-separated list of strings. The set of data rates, in Mbps, that have to be supported by all stations that desire to join this BSS. The stations have to be able to receive and transmit at each of the data rates listed inBasicDataTransmitRates. For example, a value of "1,2", indicates that stations support 1 Mbps and 2 Mbps. Most control packets use a data rate in BasicDataTransmitRates.	
 INT wifi_getRadioBasicDataTransmitRates(INT radioIndex, CHAR *output)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char *temp;
 	char temp_output[128];
 	char temp_TransmitRates[512];
@@ -1766,11 +1797,13 @@ INT wifi_getRadioBasicDataTransmitRates(INT radioIndex, CHAR *output)
 		}
 	}
 	strcpy(output,temp_output);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
 INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	int i=0;
 	char *temp;
 	char temp1[128];
@@ -1839,6 +1872,7 @@ INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 	}
 	wifi_hostapdWrite(radioIndex,&list);
 	list_free_param(&list);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -1948,6 +1982,7 @@ INT wifi_setSSIDEnable(INT ssidIndex, BOOL enable) //Tr181
 //Get the SSID enable status
 INT wifi_getSSIDStatus(INT ssidIndex, CHAR *output_string) //Tr181
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     char cmd[MAX_CMD_SIZE]={0};
     char buf[MAX_BUF_SIZE]={0};
     if (NULL == output_string) 
@@ -1956,8 +1991,8 @@ INT wifi_getSSIDStatus(INT ssidIndex, CHAR *output_string) //Tr181
     _syscmd(cmd, buf, sizeof(buf));
     
     snprintf(output_string, 64, (strlen(buf)> 5)?"Enabled":"Disabled");
-
-	return RETURN_OK;
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+    return RETURN_OK;
 }
 
 // Outputs a 32 byte or less string indicating the SSID name.  Sring buffer must be preallocated by the caller.
@@ -1979,7 +2014,7 @@ INT wifi_getSSIDName(INT apIndex, CHAR *output)
 // Set a max 32 byte string and sets an internal variable to the SSID name          
 INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
 {
-
+  WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
   char str[MAX_BUF_SIZE]={'\0'};
   char cmd[MAX_CMD_SIZE]={'\0'};
   char *ch;
@@ -1999,6 +2034,7 @@ INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
   }
   wifi_hostapdWrite(apIndex,&list);
   list_free_param(&list);
+  WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
   return RETURN_OK;
 }
 
@@ -2006,6 +2042,7 @@ INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
 //Get the BSSID 
 INT wifi_getBaseBSSID(INT ssidIndex, CHAR *output_string)	//RDKB
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char cmd[MAX_CMD_SIZE]={0};
         char str[MAX_BUF_SIZE]={'\0'};
         char *ch={'\0'};
@@ -2053,6 +2090,7 @@ INT wifi_getBaseBSSID(INT ssidIndex, CHAR *output_string)	//RDKB
             output_string[17] = 0;
             printf("\n%s\n",output_string);
         }
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }
 
@@ -2118,6 +2156,7 @@ INT wifi_applySSIDSettings(INT ssidIndex)
 //HAL funciton should allocate an data structure array, and return to caller with "neighbor_ap_array"
 INT wifi_getNeighboringWiFiDiagnosticResult2(INT radioIndex, wifi_neighbor_ap2_t **neighbor_ap_array, UINT *output_array_size) //Tr181	
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	INT status = RETURN_ERR;
 	UINT index;
 	wifi_neighbor_ap2_t *pt=NULL;
@@ -2152,6 +2191,7 @@ INT wifi_getNeighboringWiFiDiagnosticResult2(INT radioIndex, wifi_neighbor_ap2_t
 	}
 
 	status = RETURN_OK;
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return status;
 }
 
@@ -2170,7 +2210,8 @@ INT wifi_getRadioWifiTrafficStats(INT radioIndex, wifi_radioTrafficStats_t *outp
 
 INT wifi_getBasicTrafficStats(INT apIndex, wifi_basicTrafficStats_t *output_struct)
 {
-    char cmd[128];  
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+        char cmd[128];  
 	char buf[1280];
 	char *pos=NULL;
 	
@@ -2204,7 +2245,7 @@ INT wifi_getBasicTrafficStats(INT apIndex, wifi_basicTrafficStats_t *output_stru
     sprintf(cmd, "wlanconfig %s%d list sta | grep -v HTCAP | wc -l", AP_PREFIX, apIndex);
 	_syscmd(cmd, buf, sizeof(buf));
 	sscanf(buf,"%lu", &output_struct->wifi_Associations);
-	
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -2235,6 +2276,7 @@ INT wifi_getSSIDTrafficStats(INT apIndex, wifi_ssidTrafficStats_t *output_struct
 
 INT wifi_getNeighboringWiFiDiagnosticResult(wifi_neighbor_ap_t **neighbor_ap_array, UINT *output_array_size)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	INT status = RETURN_ERR;
 	UINT index;
 	wifi_neighbor_ap_t *pt=NULL;
@@ -2264,6 +2306,7 @@ INT wifi_getNeighboringWiFiDiagnosticResult(wifi_neighbor_ap_t **neighbor_ap_arr
 	}
 
 	status = RETURN_OK;
+  	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return status;
 }
 
@@ -2500,7 +2543,7 @@ INT wifi_getRadioResetCount(INT radioIndex, ULONG *output_int)
 // creates a new ap and pushes these parameters to the hardware
 INT wifi_createAp(INT apIndex, INT radioIndex, CHAR *essid, BOOL hideSsid)
 {
-	char buf[1024];
+    char buf[1024];
     char cmd[128];
     
 	if (NULL == essid) {
@@ -2641,6 +2684,7 @@ INT wifi_setApRtsThreshold(INT apIndex, UINT threshold)
 // ouputs up to a 32 byte string as either "TKIPEncryption", "AESEncryption", or "TKIPandAESEncryption"
 INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 {
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	struct params beacon={"beaconType",""};
 	struct params params={"wpa_pairwise",""};
 	char buf[32];
@@ -2673,13 +2717,14 @@ INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 		strncpy(output_string,"AESEncryption", strlen("AESEncryption"));
 	else if(strcmp(output_string,"TKIP CCMP") == 0)
 		strncpy(output_string,"TKIPandAESEncryption", strlen("TKIPandAESEncryption"));
-
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
 // sets the encyption mode enviornment variable.  Valid string format is "TKIPEncryption", "AESEncryption", or "TKIPandAESEncryption"
 INT wifi_setApWpaEncryptionMode(INT apIndex, CHAR *encMode)
 {
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	struct params beacon={"beaconType",""};
 	struct params params={'\0'};
 	param_list_t list;
@@ -2735,6 +2780,7 @@ INT wifi_setApWpaEncryptionMode(INT apIndex, CHAR *encMode)
 	}
 	ret=wifi_hostapdWrite(apIndex,&list);
 	list_free_param(&list);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -2769,6 +2815,7 @@ INT wifi_setApAuthMode(INT apIndex, INT mode)
 INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 {
 	//save to wifi config, and wait for wifi restart to apply
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	struct params params={'\0'};
 	int ret;
 	param_list_t list;
@@ -2789,6 +2836,7 @@ INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 	}
 	ret=wifi_hostapdWrite(apIndex,&list);
 	list_free_param(&list);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return ret;
 }
 
@@ -3464,6 +3512,7 @@ INT wifi_setApWpsDevicePIN(INT apIndex, ULONG pin)
 // Output string is either Not configured or Configured, max 32 characters
 INT wifi_getApWpsConfigurationState(INT apIndex, CHAR *output_string)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char cmd[64];
 	char buf[512]={0};
 	char *pos=NULL;
@@ -3477,6 +3526,7 @@ INT wifi_getApWpsConfigurationState(INT apIndex, CHAR *output_string)
 		if (strstr(pos, "configured")!=NULL)
 			snprintf(output_string, 64, "Configured");
 	}
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -3547,6 +3597,7 @@ INT wifi_cancelApWPS(INT apIndex)
 //HAL funciton should allocate an data structure array, and return to caller with "associated_dev_array"
 INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_t **associated_dev_array, UINT *output_array_size)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	FILE *f;
 	int read_flag=0, auth_temp=0, mac_temp=0,i=0;
 	char cmd[256], buf[2048];
@@ -3610,6 +3661,7 @@ INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_
 	mac_temp=0;
 	free(line);
 	fclose(f);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -3843,6 +3895,7 @@ INT wifi_getApIndexForWiFiBand(wifi_band band)
 
 INT wifi_getRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	struct params params={"hw_mode",""};
 
 	if (NULL == output)
@@ -3862,12 +3915,14 @@ INT wifi_getRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
 	{
 		sprintf(output, "%s", "1,2,5.5,6,9,11,12,18,24,36,48,54");
 	}
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
 
 INT wifi_getRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char *temp;
 	char temp_output[128];
 	char temp_TransmitRates[128];
@@ -3896,6 +3951,7 @@ INT wifi_getRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 		}
 	}
 	strcpy(output,temp_output);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -3907,6 +3963,7 @@ INT wifi_setRadioSupportedDataTransmitRates(INT wlanIndex,CHAR *output)
 
 INT wifi_setRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	int i=0;
 	char *temp;
 	char temp1[128];
@@ -3973,6 +4030,7 @@ INT wifi_setRadioOperationalDataTransmitRates(INT wlanIndex,CHAR *output)
 	}
 	wifi_hostapdWrite(wlanIndex,&list);
 	list_free_param(&list);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -4004,6 +4062,7 @@ INT wifi_setRadioDcsScanning(INT radioIndex, BOOL enable)
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	int index;
 	INT ret=0;
     if(argc <= 1) {
@@ -4116,6 +4175,7 @@ int main(int argc,char **argv)
 		if(associated_dev_array)
 			free(associated_dev_array); //make sure to free the list
 	}
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return 0;
 }
 
