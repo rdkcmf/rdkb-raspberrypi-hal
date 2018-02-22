@@ -95,6 +95,8 @@ int wifi_hostapdWrite(int ap,param_list_t *list)
 	char cur_val[127]={'\0'};
 	char buf[MAX_BUF_SIZE];
 	int loop_ctr=0;
+	char IfName[MAX_BUF_SIZE] = {0};
+	char ssid_cur_value[50] = {0};
 	for(loop_ctr=0;loop_ctr<list->count;loop_ctr++)
 	{
 		memset(cur_val,'\0',sizeof(cur_val));
@@ -164,6 +166,48 @@ int wifi_hostapdWrite(int ap,param_list_t *list)
 			wifi_dbg_printf("\ncmdsss=%s\n",cmd);
 		}
 	}
-	system("systemctl restart hostapd.service");
+	//system("systemctl restart hostapd.service");
+	if(ap == 0)
+	{
+		wifi_RestartPrivateWifi_2G();
+		system("/usr/sbin/hostapd -B /nvram/hostapd0.conf");
+	}
+	else if(ap == 1)
+	{
+		wifi_RestartHostapd_5G(ap);
+		system("/usr/sbin/hostapd -B /nvram/hostapd1.conf");
+		File_Reading("cat /tmp/GetPub5gssidEnable.txt",&ssid_cur_value);
+		if(strcmp(ssid_cur_value,"1") == 0)
+		{
+			restarthostapd_all("/nvram/hostapd5.conf");
+		}
+	}
+	else if(ap == 4)
+	{
+		wifi_RestartHostapd_2G();
+		system("/usr/sbin/hostapd -B /nvram/hostapd4.conf");
+	}
+	else if(ap == 5)
+	{
+		wifi_RestartHostapd_5G(ap);
+		system("/usr/sbin/hostapd -B /nvram/hostapd5.conf");
+		//For Alias interface of 5G
+		File_Reading("cat /tmp/Get5gssidEnable.txt",&ssid_cur_value);
+		if(strcmp(ssid_cur_value,"1") == 0)
+		{
+			restarthostapd_all("/nvram/hostapd1.conf");
+		}
+#if 0
+		else
+		{
+			if((strlen(buf)>0) && (priv_Sflag == TRUE))
+			{
+				restarthostapd_all("/nvram/hostapd1.conf");
+				priv_Sflag = FALSE;
+			}
+		}
+#endif
+
+	}
 	return RETURN_OK;
 }
