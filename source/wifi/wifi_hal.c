@@ -176,7 +176,7 @@ void wifi_RestartHostapd_5G(INT radioIndex)
 		system("ps -eaf | grep hostapd5.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
         system("rmmod rtl8812au");
         system("sleep 3");
-        system("insmod /lib/modules/4.1.21/rtl8812au.ko");
+        system("modprobe rtl8812au");
         system("sleep 5");
 }
 
@@ -185,7 +185,7 @@ void wifi_RestartHostapd_2G()
 	system("ps -eaf | grep hostapd4.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
 	system("rmmod 8192eu");
 	system("sleep 3");
-	system("insmod /lib/modules/4.1.21/8192eu.ko");
+	system("modprobe 8192eu");
 	system("sleep 5");
 }
 
@@ -193,9 +193,9 @@ void wifi_RestartPrivateWifi_2G()
 {
 	system("ps -eaf | grep hostapd0.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
         system("sleep 2");
-        system("rmmod /lib/modules/4.1.21/kernel/drivers/net/wireless/brcm80211/brcmfmac/brcmfmac.ko");
+        system("rmmod brcmfmac");
         system("sleep 3");
-        system("insmod /lib/modules/4.1.21/kernel/drivers/net/wireless/brcm80211/brcmfmac/brcmfmac.ko");
+        system("modprobe brcmfmac");
         system("sleep 5");
 }
 
@@ -1532,9 +1532,9 @@ INT wifi_getRadioPossibleChannels(INT radioIndex, CHAR *output_string)	//RDKB
         else
         {
 	if(radioIndex == 0) 
-                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
         else if(radioIndex == 1) 
-                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
         _syscmd(cmd, buf, sizeof(buf));
         for(count = 0;buf[count] != '\n';count++)
                 output_string[count] = buf[count];
@@ -1568,9 +1568,9 @@ INT wifi_getRadioChannelsInUse(INT radioIndex, CHAR *output_string)	//RDKB
 	else
 	{
 		if(radioIndex == 0) 
-			sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+			sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 		else if(radioIndex == 1) 
-			sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+			sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 		_syscmd(cmd, buf, sizeof(buf));
 		for(count = 0;buf[count] != '\n';count++)
 			output_string[count] = buf[count];
@@ -3440,7 +3440,7 @@ INT wifi_getApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 			else
 			{
 				if(strcmp(authMode,"WPA-PSK") == 0)
-					strcpy(authMode,"PSKAuthentication");
+					strcpy(authMode,"SharedAuthentication");
 				else if(strcmp(authMode,"WPA-EAP") == 0)
 					strcpy(authMode,"EAPAuthentication");
 			}
