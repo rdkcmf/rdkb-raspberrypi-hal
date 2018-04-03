@@ -3662,126 +3662,128 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 
 	//Store the AP enable settings and wait for wifi up to apply
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-	//retValue = wifi_setRadioEnable(apIndex, enable);
-	BOOL GetRadioEnable;
-	char ssid_cur_value[50] = {0};
-	char command[50] ={0};
-	char IfName[MAX_BUF_SIZE]={'\0'};
-	char HConf_file[MAX_BUF_SIZE]={'\0'};
-	char buf[MAX_BUF_SIZE]={'\0'};
-	char cmd[MAX_CMD_SIZE]={'\0'};
-	char xfinity_wifi[MAX_CMD_SIZE]={'\0'};
-	int count = 0;
-	FILE *fp = NULL;
-	//For Getting Radio Status
-	wifi_getRadioEnable(apIndex,&GetRadioEnable);
-	if(apIndex == 0)
-		sprintf(buf,"%s%d%s","echo ",GetRadioEnable," > /tmp/Get2gRadioEnable.txt");
-	else if(apIndex == 1)
-		sprintf(buf,"%s%d%s","echo ",GetRadioEnable," > /tmp/Get5gRadioEnable.txt");
-	system(buf);
-
-	_syscmd("dmcli eRT psmgetv dmsb.hotspot.enable | grep value | cut -f3 -d : | cut -f2 -d' '",buf,sizeof(buf));
-	for(count=0;buf[count]!='\n';count++)
-		xfinity_wifi[count] = buf[count];
-	xfinity_wifi[count] = '\0';
-	sprintf(HConf_file,"%s%d%s","/nvram/hostapd",apIndex,".conf");
-	GetInterfaceName(IfName,HConf_file);
-	if(enable == FALSE)
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
 	{
-		sprintf(cmd,"%s%s%s","ifconfig ",IfName," down");
-		system(cmd);
-	}
-	else
-	{
-		sprintf(cmd,"%s%s%s","ps eaf | grep ",HConf_file," | grep -v grep | awk '{print $1}' | xargs kill -9");
-		system(cmd);
-		sprintf(cmd,"%s%s","/usr/sbin/hostapd -B ",HConf_file);
+		//retValue = wifi_setRadioEnable(apIndex, enable);
+		BOOL GetRadioEnable;
+		char ssid_cur_value[50] = {0};
+		char command[50] ={0};
+		char IfName[MAX_BUF_SIZE]={'\0'};
+		char HConf_file[MAX_BUF_SIZE]={'\0'};
+		char buf[MAX_BUF_SIZE]={'\0'};
+		char cmd[MAX_CMD_SIZE]={'\0'};
+		char xfinity_wifi[MAX_CMD_SIZE]={'\0'};
+		int count = 0;
+		FILE *fp = NULL;
+		//For Getting Radio Status
+		wifi_getRadioEnable(apIndex,&GetRadioEnable);
 		if(apIndex == 0)
-			wifi_RestartPrivateWifi_2G();
-		else if((apIndex == 1) || (apIndex == 5))
-			wifi_RestartHostapd_5G(apIndex);
-		else if(apIndex == 4)
-			wifi_RestartHostapd_2G();
-		system("sleep 5");
-		if((apIndex == 0) || (apIndex == 1))
+			sprintf(buf,"%s%d%s","echo ",GetRadioEnable," > /tmp/Get2gRadioEnable.txt");
+		else if(apIndex == 1)
+			sprintf(buf,"%s%d%s","echo ",GetRadioEnable," > /tmp/Get5gRadioEnable.txt");
+		system(buf);
+
+		_syscmd("dmcli eRT psmgetv dmsb.hotspot.enable | grep value | cut -f3 -d : | cut -f2 -d' '",buf,sizeof(buf));
+		for(count=0;buf[count]!='\n';count++)
+			xfinity_wifi[count] = buf[count];
+		xfinity_wifi[count] = '\0';
+		sprintf(HConf_file,"%s%d%s","/nvram/hostapd",apIndex,".conf");
+		GetInterfaceName(IfName,HConf_file);
+		if(enable == FALSE)
 		{
-			if((GetRadioEnable == TRUE) && (enable == TRUE))
+			sprintf(cmd,"%s%s%s","ifconfig ",IfName," down");
+			system(cmd);
+		}
+		else
+		{
+			sprintf(cmd,"%s%s%s","ps eaf | grep ",HConf_file," | grep -v grep | awk '{print $1}' | xargs kill -9");
+			system(cmd);
+			sprintf(cmd,"%s%s","/usr/sbin/hostapd -B ",HConf_file);
+			if(apIndex == 0)
+				wifi_RestartPrivateWifi_2G();
+			else if((apIndex == 1) || (apIndex == 5))
+				wifi_RestartHostapd_5G(apIndex);
+			else if(apIndex == 4)
+				wifi_RestartHostapd_2G();
+			system("sleep 5");
+			if((apIndex == 0) || (apIndex == 1))
 			{
-				system(cmd);
+				if((GetRadioEnable == TRUE) && (enable == TRUE))
+				{
+					system(cmd);
+				}
+				if(strcmp(xfinity_wifi,"1") == 0)
+				{
+					if(apIndex == 1) //For Alias interface of 5G
+					{
+						File_Reading("cat /tmp/GetPub5gssidEnable.txt",&ssid_cur_value);
+						if(strcmp(ssid_cur_value,"1") == 0)
+						{
+							restarthostapd_all("/nvram/hostapd5.conf");
+						}
+						else
+						{
+							if(pub_flag == TRUE)
+							{
+								restarthostapd_all("/nvram/hostapd5.conf");
+								pub_flag = FALSE;
+							}
+						}
+					}
+				}
+				else
+					pub_flag = FALSE;
 			}
 			if(strcmp(xfinity_wifi,"1") == 0)
 			{
-				if(apIndex == 1) //For Alias interface of 5G
+				if((apIndex == 4) || (apIndex == 5))
 				{
-					File_Reading("cat /tmp/GetPub5gssidEnable.txt",&ssid_cur_value);
-					if(strcmp(ssid_cur_value,"1") == 0)
+					system(cmd);
+					if(apIndex == 5) //For Alias interface of 5G
 					{
-						restarthostapd_all("/nvram/hostapd5.conf");
-					}
-					else
-					{
-						if(pub_flag == TRUE)
-						{
-							restarthostapd_all("/nvram/hostapd5.conf");
-							pub_flag = FALSE;
-						}
-					}
-				}
-			}
-			else
-				pub_flag = FALSE;
-		}
-		if(strcmp(xfinity_wifi,"1") == 0)
-		{
-			if((apIndex == 4) || (apIndex == 5))
-			{
-				system(cmd);
-				if(apIndex == 5) //For Alias interface of 5G
-				{
-					File_Reading("cat /tmp/Get5gssidEnable.txt",&ssid_cur_value);
-					if(strcmp(ssid_cur_value,"1") == 0)
-					{
-						restarthostapd_all("/nvram/hostapd1.conf");
-					}
-					else
-					{
-						if(priv_flag == TRUE)
+						File_Reading("cat /tmp/Get5gssidEnable.txt",&ssid_cur_value);
+						if(strcmp(ssid_cur_value,"1") == 0)
 						{
 							restarthostapd_all("/nvram/hostapd1.conf");
-							priv_flag = FALSE;
+						}
+						else
+						{
+							if(priv_flag == TRUE)
+							{
+								restarthostapd_all("/nvram/hostapd1.conf");
+								priv_flag = FALSE;
+							}
 						}
 					}
 				}
-			}
 
-		}//for xfinity_wifi feature is up then only ssid's 4/5 shoud be allowed for resetting operations else it won't allowed
-		else
-			priv_flag = FALSE;
+			}//for xfinity_wifi feature is up then only ssid's 4/5 shoud be allowed for resetting operations else it won't allowed
+			else
+				priv_flag = FALSE;
+		}
+		//Need to store ssid enable value for current ssid status
+		if(apIndex == 0)
+		{
+			system("rm /tmp/Get2gssidEnable.txt");
+			sprintf(command,"%s%d%s","echo ",enable," > /tmp/Get2gssidEnable.txt");
+		}
+		else if(apIndex == 1)
+		{
+			system("rm /tmp/Get5gssidEnable.txt");
+			sprintf(command,"%s%d%s","echo ",enable," > /tmp/Get5gssidEnable.txt");
+		}
+		else if(apIndex == 4)
+		{
+			system("rm /tmp/GetPub2gssidEnable.txt");
+			sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub2gssidEnable.txt");
+		}
+		else if(apIndex == 5)
+		{
+			system("rm /tmp/GetPub5gssidEnable.txt");
+			sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub5gssidEnable.txt");
+		}
+		system(command);
 	}
-	//Need to store ssid enable value for current ssid status
-	if(apIndex == 0)
-	{
-		system("rm /tmp/Get2gssidEnable.txt");
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/Get2gssidEnable.txt");
-	}
-	else if(apIndex == 1)
-	{
-		system("rm /tmp/Get5gssidEnable.txt");
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/Get5gssidEnable.txt");
-	}
-	else if(apIndex == 4)
-	{
-		system("rm /tmp/GetPub2gssidEnable.txt");
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub2gssidEnable.txt");
-	}
-	else if(apIndex == 5)
-	{
-		system("rm /tmp/GetPub5gssidEnable.txt");
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub5gssidEnable.txt");
-	}
-	system(command);
-
 	return RETURN_OK;
 }
 
