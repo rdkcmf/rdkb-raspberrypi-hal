@@ -1493,31 +1493,25 @@ INT wifi_getRadioPossibleChannels(INT radioIndex, CHAR *output_string)	//RDKB
         char buf[MAX_BUF_SIZE] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         int count = 0;
-    if (NULL == output_string)
-       return RETURN_ERR;
+        if (NULL == output_string)
+               return RETURN_ERR;
 
 //      snprintf(output_string, 256, (radioIndex==0)?"1,6,11":"36,40");
         if(radioIndex == 0)
+	{
                 GetInterfaceName(IFName,"/nvram/hostapd0.conf");
-        else if(radioIndex == 1)
-                GetInterfaceName(IFName,"/nvram/hostapd1.conf");
-        if(NULL == IFName)
-        {
-                strcpy(output_string,"NULL");
-                return RETURN_OK;
-        }
-        else
-        {
-	if(radioIndex == 0) 
                 sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
-        else if(radioIndex == 1) 
+	}
+        else if(radioIndex == 1)
+	{
+                GetInterfaceName(IFName,"/nvram/hostapd1.conf");
                 sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep '5\.[1-9]' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+	}
         _syscmd(cmd, buf, sizeof(buf));
-        for(count = 0;buf[count] != '\n';count++)
-                output_string[count] = buf[count];
-        output_string[count]='\0';
-        }
-
+	if(strlen(buf) > 0)
+		strcpy(output_string,buf);
+	else
+		strcpy(output_string,"0");
 	return RETURN_OK;
 }
 
@@ -1534,25 +1528,20 @@ INT wifi_getRadioChannelsInUse(INT radioIndex, CHAR *output_string)	//RDKB
 
 	//	snprintf(output_string, 256, (radioIndex==0)?"1,6,11":"36,40");
 	if(radioIndex == 0)
+	{
 		GetInterfaceName(IFName,"/nvram/hostapd0.conf");
+		sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+	}
 	else if(radioIndex == 1)
+	{
 		GetInterfaceName(IFName,"/nvram/hostapd1.conf");
-	if(NULL == IFName)
-	{
-		strcpy(output_string,"NULL");
-		return RETURN_OK;
+		sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\.[1-9]' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 	}
+	_syscmd(cmd,buf, sizeof(buf));
+	if(strlen(buf) > 0)
+		strcpy(output_string,buf);
 	else
-	{
-		if(radioIndex == 0) 
-			sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
-		else if(radioIndex == 1) 
-			sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
-		_syscmd(cmd, buf, sizeof(buf));
-		for(count = 0;buf[count] != '\n';count++)
-			output_string[count] = buf[count];
-		output_string[count]='\0';
-	}
+		strcpy(output_string,"0");
 
 	return RETURN_OK;
 }
