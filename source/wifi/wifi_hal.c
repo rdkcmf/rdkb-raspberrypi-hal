@@ -2330,11 +2330,30 @@ INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 	char temp1[128];
 	char temp_output[128];
 	char temp_TransmitRates[128];
+        char supported_rate[128];
+        char *token;
+        int count=0;
 
         if(NULL == TransmitRates)
             return RETURN_ERR;
 
 	strcpy(temp_TransmitRates,TransmitRates);
+//Allow only supported Data transmit rate to be set
+
+        wifi_getRadioSupportedDataTransmitRates(radioIndex,supported_rate);
+        token = strtok(supported_rate,",");
+
+        while( token != NULL  )
+        {
+           token=strtok(NULL,",");
+           if(token== NULL)
+             break;
+           if(strcmp(temp_TransmitRates,token)==0) /* Check for supported rates */
+             count =1;
+        }
+        if(count==0)
+           return RETURN_ERR;  /* return error if basic rate is not in list of supported rates */
+
 	for(i=0;i<strlen(temp_TransmitRates);i++)
 	{
 		//if (((temp_TransmitRates[i]>=48) && (temp_TransmitRates[i]<=57)) | (temp_TransmitRates[i]==32))
