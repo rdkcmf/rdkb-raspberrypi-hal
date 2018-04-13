@@ -4535,6 +4535,71 @@ INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_
 //To-do
 INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
 {
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+        FILE *f;
+        int read_flag=0, auth_temp=0, mac_temp=0,i=0;
+        char cmd[256], buf[2048];
+        char *param , *value, *line=NULL;
+        size_t len = 0;
+        ssize_t nread;
+        wifi_associated_dev_t *dev=NULL;
+        *associated_dev_array = NULL;
+        sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta | grep AUTHORIZED | wc -l" , apIndex);
+        _syscmd(cmd,buf,sizeof(buf));
+        *output_array_size = atoi(buf);
+
+        if (*output_array_size <= 0)
+                return RETURN_OK;
+
+        dev=(wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
+        *associated_dev_array = dev;
+        sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta > /tmp/connected_devices.txt" , apIndex);
+        _syscmd(cmd,buf,sizeof(buf));
+        f = fopen("/tmp/connected_devices.txt", "r");
+        if (f==NULL)
+        {
+                *output_array_size=0;
+                return RETURN_ERR;
+        }
+        while ((nread = getline(&line, &len, f)) != -1)
+        {
+                param = strtok(line,"=");
+                value = strtok(NULL,"=");
+
+                if( strcmp("flags",param) == 0 )
+                {
+                        value[strlen(value)-1]='\0';
+                        if(strstr (value,"AUTHORIZED") != NULL )
+                        {
+                                dev[auth_temp].cli_AuthenticationState = 1;
+                                dev[auth_temp].cli_Active = 1;
+                                auth_temp++;
+                                read_flag=1;
+                        }
+		 }
+                if(read_flag==1)
+                {
+                        if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
+                        {
+                                value[strlen(value)-1]='\0';
+                                sscanf(value, "%x:%x:%x:%x:%x:%x",
+                                (unsigned int *)&dev[mac_temp].cli_MACAddress[0],
+                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[1],
+                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[2],
+                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[3],
+                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[4],
+                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[5] );
+                                mac_temp++;
+                                read_flag=0;
+                        }
+                }
+        }
+        *output_array_size = auth_temp;
+        auth_temp=0;
+        mac_temp=0;
+        free(line);
+        fclose(f);
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }
 
