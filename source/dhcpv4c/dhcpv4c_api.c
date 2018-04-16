@@ -69,11 +69,12 @@
         Cisco
 
 **********************************************************************/
-#include <stdlib.h>
+
 #include <stdio.h>
 #include <string.h>
 #include "dhcp4cApi.h"
 #include "dhcpv4c_api.h"
+
 /**********************************************************************************
  *
  *  DHCPV4-Client Subsystem level function definitions
@@ -84,21 +85,6 @@
 void query_all();
 static int query_all_in_progress = 0;
 #endif
-
-/* Dnsmasq.leases file is generated and have all information of client leases. We check for clients whether connected ,
- by checking dnsmaq.leases file  */
-
-static int check_client_connected()
-{
-   int connected_client=0;
-   FILE *fp;
-   char buf[256] = {0};
-   fp=popen("cat /nvram/dnsmasq.leases | awk '/10.0.0./ {print $3}' | wc -l","r");
-   if(fgets(buf,sizeof(buf),fp)!= NULL)
-      connected_client = atoi (buf);
-   return connected_client;
-}
-
 
 /* dhcpv4c_get_ert_lease_time() function */
 /**
@@ -290,27 +276,15 @@ INT dhcpv4c_get_ert_ifname(CHAR *pName)
 * calls. It should probably just send a message to a driver event handler task.
 *
 */
-/*
-Retrieves the status of client,The ip address are assigned to the client by dhcp-server and puts the state in bound, if the IP is not assigned, by default it is in Init state 
-
-Init                  = 1
-Selecting             = 2
-Bound                 = 5
-
-*/
 INT dhcpv4c_get_ert_fsm_state(INT *pValue)
 {
-  int cli_connected=0;
-   cli_connected = check_client_connected();
-    if(pValue==NULL || cli_connected == 0)
+    if(pValue==NULL)
     {    
-       *pValue = 1;
-           return STATUS_FAILURE;
+       return(STATUS_FAILURE);
     }
     else
     {
-       *pValue = 5; //5 indicates that status is bound. Client gets Ip addrs and changes its state to bound.
-            return STATUS_SUCCESS;
+        return STATUS_SUCCESS;
        //return dhcp4c_get_ert_fsm_state(pValue);
     }
 }
@@ -333,19 +307,12 @@ INT dhcpv4c_get_ert_fsm_state(INT *pValue)
 */
 INT dhcpv4c_get_ert_ip_addr(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if (NULL == pValue || cli_connected == 0) 
+    if (NULL == pValue) 
     {    
         return STATUS_FAILURE;
     } 
     else 
     {
-	FILE *fr;
-	char *ptemp=pValue;
-        fr= popen("head -n1 /nvram/dnsmasq.leases | awk '/10.0.0./ {print $3}'","r");
-        fgets(buf,sizeof(buf),fr);
-	sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_ip_addr(pValue);
     }
@@ -369,20 +336,12 @@ INT dhcpv4c_get_ert_ip_addr(UINT *pValue)
 */
 INT dhcpv4c_get_ert_mask(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if (NULL == pValue || cli_connected == 0) 
+    if (NULL == pValue) 
     {    
         return STATUS_FAILURE;
     } 
     else 
     {
-        FILE *fr;
-        char *ptemp=pValue;
-        char buf[256] = {0};
-        fr= popen("cat /var/dnsmasq.conf | awk '/dhcp-range/ {print $1}' | cut -d',' -f3","r");
-        fgets(buf,sizeof(buf),fr);
-        sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_mask(pValue);
     }
@@ -406,20 +365,12 @@ INT dhcpv4c_get_ert_mask(UINT *pValue)
 */
 INT dhcpv4c_get_ert_gw(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if(pValue==NULL || cli_connected == 0)
+    if(pValue==NULL)
     {    
        return(STATUS_FAILURE);
     }
     else
     {
-        char buf[256] = {0};
-        FILE *fr;
-        char *ptemp=pValue;
-        fr= popen("syscfg get lan_ipaddr","r");
-        fgets(buf,sizeof(buf),fr);
-        sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
         return STATUS_SUCCESS;
        //return dhcp4c_get_ert_gw(pValue);
     }
@@ -472,20 +423,12 @@ INT dhcpv4c_get_ert_dns_svrs(dhcpv4c_ip_list_t *pList)
 */
 INT dhcpv4c_get_ert_dhcp_svr(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if (NULL == pValue || cli_connected == 0) 
+    if (NULL == pValue) 
     {    
         return STATUS_FAILURE;
     } 
     else 
     {
-        FILE *fr;
-        char buf[256] = {0};
-        char *ptemp=pValue;
-        fr= popen("syscfg get lan_ipaddr","r");
-        fgets(buf,sizeof(buf),fr);
-        sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_dhcp_svr(pValue);
     }
