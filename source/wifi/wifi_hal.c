@@ -2324,6 +2324,7 @@ INT wifi_getRadioBasicDataTransmitRates(INT radioIndex, CHAR *output)
 
 INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 {
+	
         WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char *temp;
 	char temp1[128];
@@ -4342,17 +4343,58 @@ INT wifi_setApSecurityRadiusSettings(INT apIndex, wifi_radius_setting_t *input)
 // outputs the WPS enable state of this ap in output_bool 
 INT wifi_getApWpsEnable(INT apIndex, BOOL *output_bool)
 {
+	char buf[MAX_BUF_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
 	if(!output_bool)
 		return RETURN_ERR;
-	*output_bool=FALSE;
+	if((apIndex == 0 ) || (apIndex == 1))
+        {
+		sprintf(cmd,"cat /nvram/hostapd%d.conf | grep wps_state | cut -d '=' -f1",apIndex);
+	}
+	_syscmd(cmd,buf, sizeof(buf));	
+	if(strlen(buf)>0)
+	{
+		if(buf[0] == '#')
+		{
+			*output_bool=FALSE;
+		}
+		else
+		{
+			*output_bool=TRUE;
+		}
+	}
 	return RETURN_OK;
 }        
 
 // sets the WPS enable enviornment variable for this ap to the value of enableValue, 1==enabled, 0==disabled     
 INT wifi_setApWpsEnable(INT apIndex, BOOL enableValue)
 {
+	char buf[MAX_BUF_SIZE] = {0};
+	char Hconf[MAX_BUF_SIZE] = {0};
 	//store the paramters, and wait for wifi up to apply
-	return RETURN_ERR;
+	if((apIndex == 0 ) || (apIndex == 1))
+	{
+		sprintf(Hconf,"/nvram/hostapd%d.conf",apIndex);
+		if(enableValue == FALSE)
+		{
+			sprintf(buf,"%s%c%s%s%c %s","sed -i ",'"',"/wps_state=2/ s/^/","#/",'"',Hconf);
+		}
+		else
+		{
+			sprintf(buf,"%s%c%s%c %s","sed -i ",'"',"/wps_state=2/ s/^#*//",'"',Hconf);
+		}
+		system(buf);
+		if(apIndex == 0)
+		{
+			wifi_RestartPrivateWifi_2G();
+		}
+		else
+		{
+			wifi_RestartHostapd_5G(apIndex);
+		}
+		restarthostapd_all(Hconf);		
+	}
+	return RETURN_OK;
 }        
 
 //Comma-separated list of strings. Indicates WPS configuration methods supported by the device. Each list item is an enumeration of: USBFlashDrive,Ethernet,ExternalNFCToken,IntegratedNFCToken,NFCInterface,PushButton,PIN
@@ -4370,31 +4412,145 @@ INT wifi_getApWpsConfigMethodsEnabled(INT apIndex, CHAR *output)
 {
 	if(!output)
 		return RETURN_ERR;
-	snprintf(output, 128, "PushButton,PIN");
-	return RETURN_OK;
+	//snprintf(output, 128, "PushButton,PIN");
+	char buf[MAX_BUF_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
+	if((apIndex == 0) || (apIndex == 1))
+	{
+		sprintf(cmd,"cat /nvram/hostapd%d.conf | grep config_methods | cut -d '=' -f2 | sed 's/ /,/g' | sed 's/,$/ /g'",apIndex);
+
+		_syscmd(cmd,buf, sizeof(buf));
+		if(strlen(buf) > 0)
+		{
+			//	strcpy(output,buf);
+			if(strstr(buf, "label")!=NULL)
+				strcat(output, "Label,");
+			if(strstr(buf, "display")!=NULL)
+				strcat(output, "Display,");
+			if(strstr(buf, "push_button")!=NULL)
+				strcat(output, "PushButton,");
+			if(strstr(buf, "keypad")!=NULL)
+				strcat(output, "Keypad,");
+			if(strlen(output))
+				output[strlen(output)-1] = '\0';
+
+		}
+		return RETURN_OK;
+	}
 }
 
 // sets an enviornment variable that specifies the WPS configuration method(s).  methodString is a comma separated list of methods USBFlashDrive,Ethernet,ExternalNFCToken,IntegratedNFCToken,NFCInterface,PushButton,PIN
 INT wifi_setApWpsConfigMethodsEnabled(INT apIndex, CHAR *methodString)
 {
 	//apply instantly. No setting need to be stored. 
-	return RETURN_ERR;
+	char buf[MAX_BUF_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
+	char Hconf[MAX_CMD_SIZE] = {0};
+	char local_config_methods[MAX_BUF_SIZE] = {0};
+	sprintf(Hconf,"/nvram/hostapd%d.conf",apIndex);
+	if(strstr(methodString, "PushButton"))
+	{
+		if(strlen(local_config_methods) == 0)
+			strcat(local_config_methods, "push_button");
+		else
+			strcat(local_config_methods, " push_button");
+
+	}
+
+	if(strstr(methodString, "Keypad"))
+	{
+		if(strlen(local_config_methods) == 0)
+			strcat(local_config_methods, "keypad");
+		else
+			strcat(local_config_methods, " keypad");
+	}
+
+	if(strstr(methodString, "Label"))
+	{
+		if(strlen(local_config_methods) == 0)
+			strcat(local_config_methods, "label");
+		else
+			strcat(local_config_methods, " label");
+
+	}
+
+	if(strstr(methodString, "Display"))
+	{
+		if(strlen(local_config_methods) == 0)
+			strcat(local_config_methods, "display");
+		else
+			strcat(local_config_methods, " display");
+	}
+
+	if((apIndex == 0) || (apIndex == 1))
+	{
+		sprintf(buf,"sed -i '/config_methods=/d' %s",Hconf);
+		sleep(2);
+		system(buf);
+		if(strcmp(local_config_methods,"push_button") == 0)
+			sprintf(buf,"echo config_methods=%s >> /nvram/hostapd%d.conf",local_config_methods,apIndex);
+		else if(strcmp(local_config_methods,"keypad label display") == 0)
+			sprintf(buf,"echo config_methods=%s >> /nvram/hostapd%d.conf",local_config_methods,apIndex);
+		else if(strcmp(local_config_methods,"push_button keypad label display") == 0)
+			sprintf(buf,"echo config_methods=%s >> /nvram/hostapd%d.conf",local_config_methods,apIndex);
+		system(buf);
+		if(apIndex == 0)
+		{
+			wifi_RestartPrivateWifi_2G();
+		}
+		else
+		{
+			wifi_RestartHostapd_5G(apIndex);
+		}
+		restarthostapd_all(Hconf);
+		return RETURN_OK;
+	}
 }
 
 // outputs the pin value, ulong_pin must be allocated by the caller
 INT wifi_getApWpsDevicePIN(INT apIndex, ULONG *output_ulong)
 {
+	char buf[MAX_BUF_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
 	if(!output_ulong)
 		return RETURN_ERR;
-	*output_ulong=45276457;
+	if((apIndex == 0) || (apIndex == 1))
+	{
+		sprintf(cmd,"cat /nvram/hostapd%d.conf | grep ap_pin | cut -d '=' -f2",apIndex);
+		_syscmd(cmd,buf, sizeof(buf));
+		if(strlen(buf) > 0)
+			*output_ulong=atoi(buf);
+	}
 	return RETURN_OK;
 }
 
 // set an enviornment variable for the WPS pin for the selected AP. Normally, Device PIN should not be changed.
 INT wifi_setApWpsDevicePIN(INT apIndex, ULONG pin)
 {
-	//set the pin to wifi config and hostpad config. wait for wifi reset or hostapd reset to apply 
-	return RETURN_ERR;
+	//set the pin to wifi config and hostpad config. wait for wifi reset or hostapd reset to apply
+	char ap_pin[MAX_BUF_SIZE] = {0};
+	char buf[MAX_BUF_SIZE] = {0};
+	char Hconf[MAX_BUF_SIZE] = {0};
+	ULONG prev_pin = 0;
+	sprintf(ap_pin, "%ld", pin); 
+	wifi_getApWpsDevicePIN(apIndex,&prev_pin);
+	sprintf(Hconf,"hostapd%d.conf",apIndex);
+	if((apIndex == 0) || (apIndex == 1))
+	{
+		sprintf(buf,"%s%ld%s%ld%s%s","sed -i 's/ap_pin=",prev_pin,"/ap_pin=",pin,"/g' /nvram/",Hconf);
+	}
+	system(buf);
+	if(apIndex == 0)
+	{
+		wifi_RestartPrivateWifi_2G();
+	}
+	else
+	{
+		wifi_RestartHostapd_5G(apIndex);
+	}
+	restarthostapd_all(Hconf);
+
+	return RETURN_OK;
 }    
 
 // Output string is either Not configured or Configured, max 32 characters
@@ -4406,13 +4562,16 @@ INT wifi_getApWpsConfigurationState(INT apIndex, CHAR *output_string)
 	char *pos=NULL;
 
 	snprintf(output_string, 64, "Not configured");
+	if((apIndex == 0) || (apIndex == 1))
+	{
 
-	sprintf(cmd, "hostapd_cli -i %s%d get_config", AP_PREFIX, apIndex);
+	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d get_config",apIndex);
 	_syscmd(cmd,buf, sizeof(buf));
 	
 	if((pos=strstr(buf, "wps_state="))!=NULL) {
 		if (strstr(pos, "configured")!=NULL)
 			snprintf(output_string, 64, "Configured");
+	}
 	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
@@ -4425,6 +4584,8 @@ INT wifi_setApWpsEnrolleePin(INT apIndex, CHAR *pin)
 	char buf[256]={0};
 	BOOL enable;
 
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	wifi_getApEnable(apIndex, &enable);
 	if (!enable) 
 		return RETURN_ERR; 
@@ -4433,13 +4594,15 @@ INT wifi_setApWpsEnrolleePin(INT apIndex, CHAR *pin)
 	if (!enable) 
 		return RETURN_ERR; 
 
-	snprintf(cmd, 64, "hostapd_cli -i%s%d wps_pin any %s", AP_PREFIX, apIndex, pin);
+	snprintf(cmd, 64, "hostapd_cli -p /var/run/hostapd%d wps_pin any %s",apIndex, pin);
 	_syscmd(cmd,buf, sizeof(buf));
 	
 	if((strstr(buf, "OK"))!=NULL) 
 		return RETURN_OK;
 	else
 		return RETURN_ERR;
+	}
+	return RETURN_ERR;
 }
 
 // This function is called when the WPS push button has been pressed for this AP
@@ -4449,6 +4612,8 @@ INT wifi_setApWpsButtonPush(INT apIndex)
 	char buf[256]={0};
 	BOOL enable;
 
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	wifi_getApEnable(apIndex, &enable);
 	if (!enable) 
 		return RETURN_ERR; 
@@ -4457,13 +4622,15 @@ INT wifi_setApWpsButtonPush(INT apIndex)
 	if (!enable) 
 		return RETURN_ERR; 
 
-	snprintf(cmd, 64, "hostapd_cli -i%s%d wps_cancel; hostapd_cli -i%s%d wps_pbc", AP_PREFIX, apIndex, AP_PREFIX, apIndex);
+	snprintf(cmd, 64, "hostapd_cli -p /var/run/hostapd%d wps_pbc",apIndex);
 	_syscmd(cmd,buf, sizeof(buf));
 	
 	if((strstr(buf, "OK"))!=NULL) 
 		return RETURN_OK;
 	else
 		return RETURN_ERR;
+	}
+	return RETURN_ERR;
 }
 
 // cancels WPS mode for this AP
@@ -4471,14 +4638,27 @@ INT wifi_cancelApWPS(INT apIndex)
 {
 	char cmd[64];
 	char buf[256]={0};
+	BOOL enable;
 
-	snprintf(cmd, 64, "hostapd_cli -i%s%d wps_cancel", AP_PREFIX, apIndex);
+	if((apIndex == 0) || (apIndex == 1))
+        {
+        wifi_getApEnable(apIndex, &enable);
+        if (!enable)
+                return RETURN_ERR;
+
+        wifi_getApWpsEnable(apIndex, &enable);
+        if (!enable)
+                return RETURN_ERR;
+
+	snprintf(cmd, 64, "hostapd_cli -p /var/run/hostapd%d wps_cancel",apIndex);
 	_syscmd(cmd,buf, sizeof(buf));
 	
 	if((strstr(buf, "OK"))!=NULL) 
 		return RETURN_OK;
 	else
 		return RETURN_ERR;
+	}
+	return RETURN_ERR;
 }                                 
 
 //Device.WiFi.AccessPoint.{i}.AssociatedDevice.*
@@ -4597,14 +4777,14 @@ INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev
                                 auth_temp++;
                                 read_flag=1;
                         }
-		 }
+                }
                 if(read_flag==1)
                 {
                         if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
                         {
                                 value[strlen(value)-1]='\0';
                                 sscanf(value, "%x:%x:%x:%x:%x:%x",
-                                (unsigned int *)&dev[mac_temp].cli_MACAddress[0],
+				(unsigned int *)&dev[mac_temp].cli_MACAddress[0],
                                                 (unsigned int *)&dev[mac_temp].cli_MACAddress[1],
                                                 (unsigned int *)&dev[mac_temp].cli_MACAddress[2],
                                                 (unsigned int *)&dev[mac_temp].cli_MACAddress[3],
