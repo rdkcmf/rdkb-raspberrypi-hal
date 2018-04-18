@@ -2325,39 +2325,59 @@ INT wifi_getRadioBasicDataTransmitRates(INT radioIndex, CHAR *output)
 INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 {
         WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-	int i=0;
 	char *temp;
 	char temp1[128];
 	char temp_output[128];
 	char temp_TransmitRates[128];
-        char supported_rate[128];
+        char set[128];
+	char sub_set[128];
+	int set_count=0,subset_count=0;
+	int set_index=0,subset_index=0;
         char *token;
-        int count=0;
+        int flag=0;
+        int i=0;
 
         if(NULL == TransmitRates)
             return RETURN_ERR;
+        strcpy(sub_set,TransmitRates);
 
-	strcpy(temp_TransmitRates,TransmitRates);
 //Allow only supported Data transmit rate to be set
-
-        wifi_getRadioSupportedDataTransmitRates(radioIndex,supported_rate);
-        token = strtok(supported_rate,",");
-
-        while( token != NULL  )
-        {
-           token=strtok(NULL,",");
-           if(token== NULL)
-             break;
-           if(strcmp(temp_TransmitRates,token)==0) /* Check for supported rates */
-             count =1;
+	wifi_getRadioSupportedDataTransmitRates(radioIndex,set);
+	token = strtok(sub_set,",");
+	while( token != NULL  )  /* split the basic rate to be set, by comma */
+   	{    
+                   sub_set[subset_count]=atoi(token);
+                   subset_count++;
+                   token=strtok(NULL,","); 
         }
-        if(count==0)
-           return RETURN_ERR;  /* return error if basic rate is not in list of supported rates */
+        token=strtok(set,",");
+        while(token!=NULL)   /* split the supported rate by comma */
+        {
+                   set[set_count]=atoi(token);
+                   set_count++;
+                   token=strtok(NULL,",");
+        }
+        for(subset_index=0;subset_index < subset_count;subset_index++) /* Compare each element of subset and set */
+            {
+              for(set_index=0;set_index < set_count;set_index++)
+                  {
+                    flag=0;
+                    if(sub_set[subset_index]==set[set_index])
+                       break;
+                    else
+                       flag=1; /* No match found */
+                  }
+              if(flag==1)
+                return RETURN_ERR; //If value not found return Error
+       }
+
+
+        strcpy(temp_TransmitRates,TransmitRates);
 
 	for(i=0;i<strlen(temp_TransmitRates);i++)
 	{
 		//if (((temp_TransmitRates[i]>=48) && (temp_TransmitRates[i]<=57)) | (temp_TransmitRates[i]==32))
-		if (((temp_TransmitRates[i]>='0') && (temp_TransmitRates[i]<='9')) | (temp_TransmitRates[i]==' ') | (temp_TransmitRates[i]=='.'))
+		if (((temp_TransmitRates[i]>='0') && (temp_TransmitRates[i]<='9')) | (temp_TransmitRates[i]==' ') | (temp_TransmitRates[i]=='.') | (temp_TransmitRates[i]==','))
 		{
 			continue;
 		}
@@ -2368,7 +2388,7 @@ INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 	}
 
 	strcpy(temp_output,"");
-	temp = strtok(temp_TransmitRates," ");
+	temp = strtok(temp_TransmitRates,",");
 	while(temp!=NULL)
 	{
 		strcpy(temp1,temp);
@@ -2389,13 +2409,14 @@ INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 			strcat(temp1,"0");
 		}
 		strcat(temp_output,temp1);
-		temp = strtok(NULL," ");
+		temp = strtok(NULL,",");
 		if(temp!=NULL)
 		{
 			strcat(temp_output," ");
 		}
 	}
 	strcpy(TransmitRates,temp_output);
+
 	char buf[127]={'\0'};
 	struct params params={'\0'};
 	param_list_t list;
