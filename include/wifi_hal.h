@@ -5420,6 +5420,13 @@ int wifi_hostapdRead(int ap,struct params *params,char *output);
 *
 */
 INT wifi_setRadioDcsScanning(INT radioIndex, BOOL enable);                        //RDKB
+
+//This call back will be invoked when driver detect the client authentication fail.
+//event_type: 0=unknow reason; 1=wrong password; 2=timeout;
+typedef INT ( * wifi_apAuthEvent_callback)(INT apIndex, char *MAC, INT event_type);
+//Callback registration function.
+void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc);
+
 //<< ------------------------------ wifi_ap_hal -----------------------
 
 #else

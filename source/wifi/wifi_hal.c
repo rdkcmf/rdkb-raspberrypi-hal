@@ -5239,6 +5239,14 @@ INT wifi_setRadioDcsScanning(INT radioIndex, BOOL enable)
 {
 	return RETURN_OK;
 }
+
+wifi_apAuthEvent_callback apAuthEvent_cb = NULL;
+
+void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
+{
+    return;
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
