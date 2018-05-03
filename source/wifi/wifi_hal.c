@@ -1102,11 +1102,23 @@ INT wifi_getRadioMaxBitRate(INT radioIndex, CHAR *output_string)        //RDKB
 	else
 		strcpy(output_string,"0");
 
-	for(count = 0;buf[count]!='\n';count++)
-		tmp_buf[count] = buf[count]; //ajusting the size
-	tmp_buf[count] = '\0';
-
-	strcpy(output_string,tmp_buf);
+	if(strlen(buf) > 0)
+	{
+		for(count = 0;buf[count]!='\n';count++)
+			tmp_buf[count] = buf[count]; //ajusting the size
+		tmp_buf[count] = '\0';
+		strcpy(output_string,tmp_buf);
+	}
+	else
+	{
+		wifi_getRadioOperatingChannelBandwidth(radioIndex,&buf);
+		if((strcmp(buf,"20MHz") == 0) && (radioIndex == 0))
+			strcpy(output_string,"144 Mb/s");
+		else if((strcmp(buf,"20MHz") == 0) && (radioIndex == 1))
+			strcpy(output_string,"54 Mb/s");
+		else if((strcmp(buf,"40MHz") == 0) && (radioIndex == 1))
+			strcpy(output_string,"300 Mb/s");
+	}
 
 	/*if (strstr(tmp_buf, "Mb/s")) {
 	//216.7 Mb/s
