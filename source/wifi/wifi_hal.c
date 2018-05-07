@@ -3845,7 +3845,6 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 // Outputs the setting of the internal variable that is set by wifi_setEnable().  
 INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 {
-	INT retValue;
 	char cmd[MAX_CMD_SIZE] = {'\0'};
 	char HConf_file[MAX_BUF_SIZE] = {'\0'};
 	char path[MAX_BUF_SIZE] = {'\0'};
@@ -3854,7 +3853,7 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 	char tmp_status[MAX_BUF_SIZE] = {'\0'};
 	int count = 0;
         FILE *fp = NULL;
-	if(!output_bool)
+	if((!output_bool) || (apIndex < 0))
 		return RETURN_ERR;
 
 	//retValue = wifi_getRadioEnable(apIndex, output_bool);
@@ -3871,6 +3870,7 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 			if(strlen(buf)>0)
 			{
 				*output_bool=1;
+				return RETURN_OK;
 			}
 			else
 			{
@@ -3902,8 +3902,13 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 			}
 		}
 	}
-
-	return retValue;
+	else
+	{
+		if((apIndex > 5 ) && (apIndex < 17))
+			return RETURN_OK;
+		else
+			return RETURN_ERR;
+	}
 }
 // Outputs the AP "Enabled" "Disabled" status from driver 
 INT wifi_getApStatus(INT apIndex, CHAR *output_string) 
