@@ -1875,6 +1875,12 @@ INT wifi_factoryResetAP(int apIndex)
 	return RETURN_OK;
 }
 
+//To set Band Steering AP group
+//To-do
+INT wifi_setBandSteeringApGroup(char *ApGroup) {
+	return RETURN_OK;
+}
+
 INT wifi_setApDTIMInterval(INT apIndex, INT dtimInterval)
 {
    return RETURN_OK;
