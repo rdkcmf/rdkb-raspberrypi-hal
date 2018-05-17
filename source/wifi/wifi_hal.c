@@ -4425,7 +4425,7 @@ INT wifi_getApWpsConfigMethodsSupported(INT apIndex, CHAR *output)
 {
 	if(!output)
 		return RETURN_ERR;
-	snprintf(output, 128, "PushButton,PIN");
+	snprintf(output, 128, "Label,Display,PushButton,Keypad");
 	return RETURN_OK;
 }			
 
@@ -4571,6 +4571,7 @@ INT wifi_setApWpsDevicePIN(INT apIndex, ULONG pin)
 	{
 		wifi_RestartHostapd_5G(apIndex);
 	}
+	sprintf(Hconf,"/nvram/hostapd%d.conf",apIndex);
 	restarthostapd_all(Hconf);
 
 	return RETURN_OK;
