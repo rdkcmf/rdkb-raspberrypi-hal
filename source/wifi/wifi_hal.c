@@ -1188,6 +1188,13 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
 
 	
         ch++;
+
+ /* prepend 0 for channel with single digit. for ex, 6 would be 06  */
+        strcpy(buf,"0");
+       if(strlen(ch) == 1)
+           ch=strcat(buf,ch);
+
+
 		sprintf(cmd,"grep 'interface=' %s%d.conf",HOSTAPD_FNAME,radioIndex);
 
         if(_syscmd(cmd,str,64) ==  RETURN_ERR)
