@@ -4910,6 +4910,18 @@ INT wifi_getBandSteeringLog(INT record_index, ULONG *pSteeringTime, CHAR *pClien
 	return RETURN_OK;
 }
 
+INT wifi_ifConfigDown(INT apIndex)
+{
+  INT status = RETURN_OK;
+  char cmd[64];
+
+  snprintf(cmd, sizeof(cmd), "ifconfig ath%d down", apIndex);
+  printf("%s: %s\n", __func__, cmd);
+  system(cmd);
+
+  return status;
+}
+
 INT wifi_ifConfigUp(INT apIndex)
 {
     char cmd[128];
