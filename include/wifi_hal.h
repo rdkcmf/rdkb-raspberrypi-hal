@@ -3647,7 +3647,7 @@ INT wifi_getApNumDevicesAssociated(INT apIndex, ULONG *output_ulong); // Outputs
 * calls. It should probably just send a message to a driver event handler task.
 *
 */
-INT wifi_kickApAssociatedDevice(INT apIndex, CHAR *client_mac);  	// manually removes any active wi-fi association with the device specified on this ap
+INT wifi_kickApAssociatedDevice(INT apIndex, CHAR *client_mac, CHAR *action);  	// manually removes any active wi-fi association with the device specified on this ap
 
 /* wifi_getApRadioIndex() function */
 /**

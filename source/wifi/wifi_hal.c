@@ -689,6 +689,31 @@ INT wifi_init()                            //RDKB
     char interface[MAX_BUF_SIZE]={'\0'};
     char bridge_name[MAX_BUF_SIZE]={'\0'};
     INT len=0;
+    char count[4]={'\0'};
+    char buf[253]={'\0'};
+    char tmp[19]={'\0'};
+    int dev_count,block,mac_entry=0;
+    char res[4]={'\0'};
+
+    //Block the mac address from boot up
+    _syscmd("syscfg get countfilter",count,sizeof(count));
+    mac_entry=atoi(count);
+
+    _syscmd("syscfg get blockall",res,sizeof(res));
+    block = atoi(res);
+    //Block all the macs mentioned Wifi control list
+    if(block==1)
+    {
+        for(dev_count=1;dev_count<=mac_entry;dev_count++)
+        {
+             sprintf(buf,"syscfg get macfilter%d",dev_count);
+             _syscmd(buf,tmp,sizeof(tmp));
+             fprintf(stderr,"MAcs to be blocked  *%s*  ###########\n",tmp);
+             sprintf(buf,"iptables -A INPUT -m mac --mac-source %s -j DROP",tmp);
+             system(buf);
+        }
+    }
+
 	/* preparing hostapd configuration*/
 	if(RETURN_ERR == prepare_hostapd_conf())
 	{
@@ -3507,9 +3532,17 @@ INT wifi_getApNumDevicesAssociated(INT apIndex, ULONG *output_ulong)
 }
 
 // manually removes any active wi-fi association with the device specified on this ap
-INT wifi_kickApAssociatedDevice(INT apIndex, CHAR *client_mac) 	
+INT wifi_kickApAssociatedDevice(INT apIndex, CHAR *client_mac,CHAR *action) 	
 {
-	return RETURN_ERR;
+        char cmd[128]={'\0'};
+        char buf[128]={'\0'};
+        //apply the rule to block the mac
+        sprintf(buf,"iptables -A INPUT -m mac --mac-source %s -j %s",client_mac,action);
+        system(buf);
+        // Disconnect the client if it is connected
+        sprintf(cmd,"hostapd_cli -p /var/run/hostapd%d disassociate %s",apIndex,client_mac);
+        system(cmd);
+        return RETURN_OK;
 }
 
 // outputs the radio index for the specified ap. similar as wifi_getSsidRadioIndex
@@ -3528,36 +3561,129 @@ INT wifi_setApRadioIndex(INT apIndex, INT radioIndex)
 
 // Get the ACL MAC list per AP
 INT wifi_getApAclDevices(INT apIndex, CHAR *macArray, UINT buf_size) 
-{		
-	snprintf(macArray, buf_size, "11:22:33:44:55:66\n11:22:33:44:55:67\n");		
-	return RETURN_OK;
+{
+        char acl_file_path[64] = {'\0'};
+        char acl_list_buff[2048] = {'\0'};
+        FILE *fp = NULL;
+
+        sprintf(acl_file_path,"/tmp/wifi_acl_list_%d",apIndex);
+        if((fp=fopen(acl_file_path,"r"))!=NULL){
+                fscanf(fp,"%s",acl_list_buff);
+                fclose(fp);
+        }
+        snprintf(macArray, buf_size, "%s\n",acl_list_buff);
+        return RETURN_OK;
 }
 	
 // Get the list of stations assocated per AP
 INT wifi_getApDevicesAssociated(INT apIndex, CHAR *macArray, UINT buf_size) 
 {
-	char cmd[128];
-		
-	sprintf(cmd, "wlanconfig %s%d list sta | grep -v HTCAP | cut -d' ' -f1", AP_PREFIX, apIndex);
-	_syscmd(cmd, macArray, buf_size);
-		
-	return RETURN_OK;
+       FILE *fp;
+       char mac[258]= {'\0'};
+       fp=popen("hostapd_cli -p /var/run/hostapd0 all_sta | grep dot11RSNAStatsSTAAddress | cut -d '=' -f2", "r");
+       char tmp[258]= {'\0'};
+       char *token=NULL;
+
+       while(fgets(mac,sizeof(mac),fp) != NULL)
+       {
+          token=strtok(mac,"\n");
+              while(token!=NULL)
+              {
+                  sprintf(token,"%s,",token);
+                  strcat(tmp,token);
+                  token=strtok(NULL,"\n");
+              }
+       }
+       strcpy(macArray,tmp);
+       return RETURN_OK;
+}
+
+//delete all previous mac rule
+void recr(FILE *fr)
+{
+        char *res;
+        char mac_num[20]={'\0'};
+        char buf[56]={'\0'};
+        if((res=fgets(mac_num,sizeof(mac_num),fr))!= NULL )
+                recr(fr);
+        if(res!=NULL)
+        {
+                sprintf(buf,"iptables -D INPUT %s",mac_num);
+                system(buf);
+        }
 }
 
 // adds the mac address to the filter list
 //DeviceMacAddress is in XX:XX:XX:XX:XX:XX format
 INT wifi_addApAclDevice(INT apIndex, CHAR *DeviceMacAddress) 
 {
-	//Apply instantly		
-	return RETURN_ERR;
+        //Apply instantly               
+        char acl_file_path[64] = {'\0'};
+        FILE *fp = NULL;
+        char tmp_buff[2048] = {'\0'};
+        sprintf(acl_file_path,"/tmp/wifi_acl_list_%d",apIndex);
+
+        if((fp=fopen(acl_file_path,"r"))==NULL){
+                fp = fopen(acl_file_path,"w");
+                if(fp){
+                        fprintf(fp,"%s,",DeviceMacAddress);
+                        fclose(fp);
+                }
+        }
+        else{
+                fscanf(fp,"%s",tmp_buff);
+                fclose(fp);
+                if(strcasestr(tmp_buff, DeviceMacAddress)==NULL){
+                        fp = fopen(acl_file_path,"a");
+                        if(fp){
+                                fprintf(fp,"%s,",DeviceMacAddress);
+                                fclose(fp);
+                        }
+                }
+        }
+
+        return RETURN_OK;
 }
 
 // deletes the mac address from the filter list
 //DeviceMacAddress is in XX:XX:XX:XX:XX:XX format
 INT wifi_delApAclDevice(INT apIndex, CHAR *DeviceMacAddress)        
 {
-	//Apply instantly
-	return RETURN_ERR;
+        //Apply instantly
+        char acl_file_path[64] = {'\0'};
+        char acl_list_buff[2048] = {'\0'};
+        char tmp_buff[2048] = {'\0'};
+        char buf[56]={'\0'};
+        char mac_num[3]={'\0'};
+        FILE *fp,*fr = NULL;
+        char *ptr_dev = NULL, *ptr_acl_list = NULL;
+        int     acl_list_len, ptr_dev_len;
+
+        sprintf(acl_file_path,"/tmp/wifi_acl_list_%d",apIndex);
+        if((fp=fopen(acl_file_path,"r"))!=NULL){
+                printf("Del starrt\n");
+                fscanf(fp,"%s",acl_list_buff);
+                fclose(fp);
+
+                acl_list_len = strlen(acl_list_buff);
+                printf("acl_list_len = %d \n",acl_list_len);
+                ptr_dev = strcasestr(acl_list_buff, DeviceMacAddress);
+                if(ptr_dev != NULL){
+                        ptr_dev_len = strlen(ptr_dev);
+                        printf("ptr_dev_len =%d\n",ptr_dev_len);
+                        strncpy(tmp_buff, acl_list_buff, (acl_list_len-ptr_dev_len));
+                        printf("tmp_buff =%s\n",tmp_buff);
+                        strcat(tmp_buff,(ptr_dev+18));
+                         printf("tmp_buff 2nd=%s\n",tmp_buff);
+                }
+                fp = fopen(acl_file_path,"w");
+                if(fp){
+                        fprintf(fp,"%s",tmp_buff);
+                        fclose(fp);
+                }
+       }
+        return RETURN_OK;
+
 }
 
 // outputs the number of devices in the filter list
@@ -3572,32 +3698,56 @@ INT wifi_getApAclDeviceNum(INT apIndex, UINT *output_uint)
 // enable kick for devices on acl black list    
 INT wifi_kickApAclAssociatedDevices(INT apIndex, BOOL enable)    
 {
-	char aclArray[512]={0}, *acl=NULL;
-	char assocArray[512]={0}, *asso=NULL;
-	
-	wifi_getApAclDevices( apIndex, aclArray, sizeof(aclArray));
-    wifi_getApDevicesAssociated( apIndex, assocArray, sizeof(assocArray));
+        char aclArray[512]={0}, *acl=NULL;
+        char assocArray[512]={0}, *asso=NULL;
+        int device_count=0;
+        char buf[256]={'\0'};
+        char action[10]={'\0'};
+        FILE *fr=NULL;
 
-	// if there are no devices connected there is nothing to do
-    if (strlen(assocArray) < 17) {
-        return RETURN_OK;
-    }
-   
-    if ( enable == TRUE ) {
-		//kick off the MAC which is in ACL array (deny list)
-		acl = strtok (aclArray,"\r\n");
-		while (acl != NULL) {
-			if(strlen(acl)>=17 && strcasestr(assocArray, acl)) {
-				wifi_kickApAssociatedDevice(apIndex, acl); 
-			}
-			acl = strtok (NULL, "\r\n");
-		}
-    } else {
+        wifi_getApAclDevices( apIndex, aclArray, sizeof(aclArray));
+        wifi_getApDevicesAssociated( apIndex, assocArray, sizeof(assocArray));
+
+        // if there are no devices connected there is nothing to do
+        if (strlen(assocArray) < 17) {
+               return RETURN_OK;
+         }
+
+       //Delete all previous mac blocking rules
+        sprintf(buf,"iptables -L --line-numbers | grep MAC | cut -d ' ' -f1 | tr -s ' '");
+        fr=popen(buf, "r");
+        recr(fr);
+
+        if ( enable == TRUE ) {
+                sprintf(buf,"syscfg set blockall 1");
+                        system(buf);
+                        system("syscfg commit");
+                        strcpy(action,"DROP");
+
+                //kick off the MAC which is in ACL array (deny list)
+                acl = strtok (aclArray,",");
+                while (acl != NULL) {
+                        if(strlen(acl)>=17)
+                        {
+                                wifi_kickApAssociatedDevice(apIndex, acl,action);
+                                device_count++;
+                                //Register mac to be blocked ,in syscfg.db persistent storage 
+                                sprintf(buf,"syscfg set macfilter%d %s",device_count,acl);
+                                system(buf);
+                                system("syscfg commit");
+                                sprintf(buf,"syscfg set countfilter %d",device_count);
+                                system(buf);
+                                system("syscfg commit");
+                        }
+                        acl = strtok (NULL, ",");
+                }
+
+       } else {
 		//kick off the MAC which is not in ACL array (allow list)
 		asso = strtok (assocArray,"\r\n");
 		while (asso != NULL) {
 			if(strlen(asso)>=17 && !strcasestr(aclArray, asso)) {
-				wifi_kickApAssociatedDevice(apIndex, asso); 
+				wifi_kickApAssociatedDevice(apIndex, asso,action); 
 			}
 			asso = strtok (NULL, "\r\n");
 		}
