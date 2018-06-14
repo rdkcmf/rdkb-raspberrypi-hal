@@ -4739,6 +4739,53 @@ INT wifi_setApSecurityReset(INT apIndex);
 //Device.WiFi.AccessPoint.{i}.Security.X_COMCAST-COM_WEPKey	string	RW	
 //A WEP key expressed as a hexadecimal string.	WEPKey is used only if ModeEnabled is set to WEP-64 or WEP-128.	A 5 byte WEPKey corresponds to security mode WEP-64 and a 13 byte WEPKey corresponds to security mode WEP-128.	This custom parameter is defined to enable reading the WEPKey via TR-069/ACS. When read it should return the actual WEPKey.	If User enters 10 or 26 Hexadecimal characters, it should return keys as Hexadecimal characters.	If user enters 5 or 13 ASCII character key it should return key as ASCII characters.			
 
+/* wifi_getApSecurityMFPConfig() function */
+/**
+* @brief To retrive the MFPConfig for each VAP
+*
+* The affected settings Device.WiFi.AccessPoint.{i}.Security.Reset
+*
+* @param[in] apIndex  Access Point index
+* @param[out] output_string. Preallocated buffer for 64bytes. Allowed output string are "Disabled", "Optional", "Required"
+*
+* @return The status of the operation
+* @retval RETURN_OK if successful
+* @retval RETURN_ERR if any error is detected
+*
+* @execution Synchronous
+* @sideeffect None
+*
+* @note This function must not suspend and must not invoke any blocking system
+* calls. It should probably just send a message to a driver event handler task.
+*
+*/
+INT wifi_getApSecurityMFPConfig(INT apIndex, CHAR *output_string);
+
+/* wifi_setApSecurityMFPConfig() function */
+/**
+* @brief the hal is used to set the MFP config for each VAP.
+*        1. mfpconfig need to be saved into wifi config in persistent way (so that it could be automatically applied after the wifi or vap restart)
+*        2. mfpconfig need to be applied right away.
+*
+* The affected settings include Device.WiFi.AccessPoint.{i}.Security.Reset
+*
+* @param[in] apIndex  Access Point index
+* @param[in] MfpConfig,  The allowed string for MFPConfig are "Disabled", "Optional", "Required"
+*
+* @return The status of the operation
+* @retval RETURN_OK if successful
+* @retval RETURN_ERR if any error is detected
+*
+* @execution Synchronous
+* @sideeffect None
+*
+* @note This function must not suspend and must not invoke any blocking system
+* calls. It should probably just send a message to a driver event handler task.
+*
+*/
+INT wifi_setApSecurityMFPConfig(INT apIndex, CHAR *MfpConfig);
+
+
 //-----------------------------------------------------------------------------------------------
 
 /* wifi_getApSecurityRadiusServer() function */

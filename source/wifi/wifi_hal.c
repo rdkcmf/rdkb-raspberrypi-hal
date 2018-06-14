@@ -5185,6 +5185,15 @@ INT wifi_getApSecurityWpaRekeyInterval(INT apIndex, INT *output_int)
    return RETURN_OK;
 }
 
+//To-do
+INT wifi_getApSecurityMFPConfig(INT apIndex, CHAR *output_string)
+{
+	return RETURN_OK;
+}
+INT wifi_setApSecurityMFPConfig(INT apIndex, CHAR *MfpConfig)
+{
+	return RETURN_OK;
+}
 INT wifi_getRadioAutoChannelEnable(INT radioIndex, BOOL *output_bool)
 {
 	//	*output_bool=FALSE;
