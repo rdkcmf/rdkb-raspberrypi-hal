@@ -681,6 +681,75 @@ INT wifi_initRadio(INT radioIndex)
 
   return RETURN_OK;
 }
+void macfilter_init()
+{
+    char count[4]={'\0'};
+    char buf[253]={'\0'};
+    char tmp[19]={'\0'};
+    int dev_count,block,mac_entry=0;
+    char res[4]={'\0'};
+    char acl_file_path[64] = {'\0'};
+    FILE *fp = NULL;
+    int index=0;
+    char iface[10]={'\0'};
+
+    struct params params={"interface",""};
+
+    sprintf(acl_file_path,"/tmp/mac_filter.sh");
+
+    fp=fopen(acl_file_path,"w+");
+    sprintf(buf,"#!/bin/sh \n");
+    fprintf(fp,"%s\n",buf);
+
+    system("chmod 0777 /tmp/mac_filter.sh");
+
+    for(index=0;index<=1;index++)
+    {
+        wifi_hostapdRead(index,&params,iface);
+        sprintf(buf,"syscfg get %dcountfilter",index);
+        _syscmd(buf,count,sizeof(count));
+        mac_entry=atoi(count);
+
+        sprintf(buf,"syscfg get %dblockall",index);
+        _syscmd(buf,res,sizeof(res));
+        block = atoi(res);
+
+        //Allow only those macs mentioned in ACL
+        if(block==1)
+        {
+             sprintf(buf,"iptables -N  WifiServices%d\n iptables -I INPUT 21 -j WifiServices%d\n",index,index);
+             fprintf(fp,"%s\n",buf);
+             for(dev_count=1;dev_count<=mac_entry;dev_count++)
+             {
+                 sprintf(buf,"syscfg get %dmacfilter%d",index,dev_count);
+                 _syscmd(buf,tmp,sizeof(tmp));
+                 fprintf(stderr,"MAcs to be Allowed  *%s*  ###########\n",tmp);
+                 sprintf(buf,"iptables -I WifiServices%d -m physdev --physdev-in %s -m mac --mac-source %s -j RETURN",index,iface,tmp);
+                 fprintf(fp,"%s\n",buf);
+             }
+             sprintf(buf,"iptables -A WifiServices%d -m physdev --physdev-in %s -m mac ! --mac-source %s -j DROP",index,iface,tmp);
+             fprintf(fp,"%s\n",buf);
+       }
+
+       //Block all the macs mentioned in ACL
+       else if(block==2)
+       {
+             sprintf(buf,"iptables -N  WifiServices%d\n iptables -I INPUT 21 -j WifiServices%d\n",index,index);
+             fprintf(fp,"%s\n",buf);
+
+             for(dev_count=1;dev_count<=mac_entry;dev_count++)
+             {
+                  sprintf(buf,"syscfg get %dmacfilter%d",index,dev_count);
+                  _syscmd(buf,tmp,sizeof(tmp));
+                  fprintf(stderr,"MAcs to be blocked  *%s*  ###########\n",tmp);
+                  sprintf(buf,"iptables -A WifiServices%d -m physdev --physdev-in %s -m mac --mac-source %s -j DROP",index,iface,tmp);
+                  fprintf(fp,"%s\n",buf);
+             }
+       }
+    }
+    fclose(fp);
+   return 0;
+}
 
 // Initializes the wifi subsystem (all radios)
 INT wifi_init()                            //RDKB
@@ -689,45 +758,8 @@ INT wifi_init()                            //RDKB
     char interface[MAX_BUF_SIZE]={'\0'};
     char bridge_name[MAX_BUF_SIZE]={'\0'};
     INT len=0;
-    char count[4]={'\0'};
-    char buf[253]={'\0'};
-    char tmp[19]={'\0'};
-    int dev_count,block,mac_entry=0;
-    char res[4]={'\0'};
 
-    //Block the mac address from boot up
-    _syscmd("syscfg get countfilter",count,sizeof(count));
-    mac_entry=atoi(count);
-
-    _syscmd("syscfg get blockall",res,sizeof(res));
-    block = atoi(res);
-    //allow only certain mac addresses mentioned in Wifi control list
-    if(block==1)
-    {
-        system("iptables -P INPUT DROP");
-        for(dev_count=1;dev_count<=mac_entry;dev_count++)
-        {
-             sprintf(buf,"syscfg get macfilter%d",dev_count);
-             _syscmd(buf,tmp,sizeof(tmp));
-             fprintf(stderr,"MAcs to be Allowed  *%s*  ###########\n",tmp);
-             sprintf(buf,"iptables -A INPUT -m mac --mac-source %s -j ACCEPT",tmp);
-             system(buf);
-        }
-    }
-
-    //Block all the macs mentioned Wifi control list
-    else if(block==2)
-    {
-        system("iptables -P INPUT ACCEPT");
-        for(dev_count=1;dev_count<=mac_entry;dev_count++)
-        {
-             sprintf(buf,"syscfg get macfilter%d",dev_count);
-             _syscmd(buf,tmp,sizeof(tmp));
-             fprintf(stderr,"MAcs to be blocked  *%s*  ###########\n",tmp);
-             sprintf(buf,"iptables -A INPUT -m mac --mac-source %s -j DROP",tmp);
-             system(buf);
-        }
-    }
+    macfilter_init();
 
 	/* preparing hostapd configuration*/
 	if(RETURN_ERR == prepare_hostapd_conf())
@@ -3547,31 +3579,13 @@ INT wifi_getApNumDevicesAssociated(INT apIndex, ULONG *output_ulong)
 }
 
 // manually removes any active wi-fi association with the device specified on this ap
-INT wifi_kickApAssociatedDevice(INT apIndex, CHAR *client_mac,CHAR *action) 	
+INT wifi_kickApAssociatedDevice(INT apIndex, CHAR *client_mac) 	
 {
-        char cmd[128]={'\0'};
-        char buf[128]={'\0'};
-        
-        if(strcmp(action,"DENY")==0)
-        {
-           system("iptables -P INPUT ACCEPT");
-          //apply the rule to block the mac
-          sprintf(buf,"iptables -A INPUT -m mac --mac-source %s -j DROP",client_mac);
-          system(buf);
-          return RETURN_OK;
-        }
- 
-        if(strcmp(action,"ALLOW")==0)
-        {
-          //Change default policy as DROP
-          system("iptables -P INPUT DROP");
-          //apply the rule to allow the mac
-          sprintf(buf,"iptables -A INPUT -m mac --mac-source %s -j ACCEPT",client_mac);
-          system(buf);
-          return RETURN_OK;
-        }
-  
-        return RETURN_ERR;
+         char buf[126]={'\0'};
+         sprintf(buf,"hostapd_cli -p /var/run/hostapd%d disassociate %s",apIndex,client_mac);
+         system(buf);
+
+         return RETURN_OK;
 }
 
 // outputs the radio index for the specified ap. similar as wifi_getSsidRadioIndex
@@ -3609,10 +3623,13 @@ INT wifi_getApDevicesAssociated(INT apIndex, CHAR *macArray, UINT buf_size)
 {
        FILE *fp;
        char mac[258]= {'\0'};
-       fp=popen("hostapd_cli -p /var/run/hostapd0 all_sta | grep dot11RSNAStatsSTAAddress | cut -d '=' -f2", "r");
+       char buf[258]= {'\0'};
        char tmp[258]= {'\0'};
        char *token=NULL;
 
+       sprintf(buf,"hostapd_cli -p /var/run/hostapd%d all_sta | grep dot11RSNAStatsSTAAddress",apIndex);
+       fp=popen(buf,"r");
+       
        while(fgets(mac,sizeof(mac),fp) != NULL)
        {
           token=strtok(mac,"\n");
@@ -3625,21 +3642,6 @@ INT wifi_getApDevicesAssociated(INT apIndex, CHAR *macArray, UINT buf_size)
        }
        strcpy(macArray,tmp);
        return RETURN_OK;
-}
-
-//delete all previous mac rule
-void recr(FILE *fr)
-{
-        char *res;
-        char mac_num[20]={'\0'};
-        char buf[56]={'\0'};
-        if((res=fgets(mac_num,sizeof(mac_num),fr))!= NULL )
-                recr(fr);
-        if(res!=NULL)
-        {
-                sprintf(buf,"iptables -D INPUT %s",mac_num);
-                system(buf);
-        }
 }
 
 // adds the mac address to the filter list
@@ -3723,7 +3725,28 @@ INT wifi_getApAclDeviceNum(INT apIndex, UINT *output_uint)
 	*output_uint=0;
 	return RETURN_ERR;   
 }
+INT apply_rules(INT apIndex, CHAR *client_mac,CHAR *action,CHAR *interface)
+{
+        char cmd[128]={'\0'};
+        char buf[128]={'\0'};
 
+        if(strcmp(action,"DENY")==0)
+        {
+            sprintf(buf,"iptables -A WifiServices%d -m physdev --physdev-in %s -m mac --mac-source %s -j DROP",apIndex,interface,client_mac);
+            system(buf);
+            return RETURN_OK;
+        }
+
+        if(strcmp(action,"ALLOW")==0)
+        {
+            sprintf(buf,"iptables -I WifiServices%d -m physdev --physdev-in %s -m mac --mac-source %s -j RETURN",apIndex,interface,client_mac);
+            system(buf);
+            return RETURN_OK;
+        }
+
+        return RETURN_ERR;
+
+}
 // enable kick for devices on acl black list    
 INT wifi_kickApAclAssociatedDevices(INT apIndex, BOOL enable)    
 {
@@ -3732,12 +3755,25 @@ INT wifi_kickApAclAssociatedDevices(INT apIndex, BOOL enable)
         char buf[256]={'\0'};
         char action[10]={'\0'};
         FILE *fr=NULL;
+        char interface[10]={'\0'};
+        struct params params={"interface",""};
 
         wifi_getApAclDevices( apIndex, aclArray, sizeof(aclArray));
         wifi_getApDevicesAssociated( apIndex, assocArray, sizeof(assocArray));
+        wifi_hostapdRead(apIndex,&params,interface);
 
-
-        if ( enable == TRUE ) {
+        sprintf(buf,"iptables -F  WifiServices%d",apIndex);
+        system(buf);
+        sprintf(buf,"iptables -D INPUT  -j WifiServices%d",apIndex);
+        system(buf);
+        sprintf(buf,"iptables -X  WifiServices%d",apIndex);
+        system(buf);
+        sprintf(buf,"iptables -N  WifiServices%d",apIndex);
+        system(buf);
+        sprintf(buf,"iptables -I INPUT 21 -j WifiServices%d",apIndex);
+        system(buf);
+       
+       if ( enable == TRUE ) {
                 int device_count=0;
                 strcpy(action,"DENY");
                 //kick off the MAC which is in ACL array (deny list)
@@ -3745,52 +3781,51 @@ INT wifi_kickApAclAssociatedDevices(INT apIndex, BOOL enable)
                 while (acl != NULL) {
                         if(strlen(acl)>=17)
                         {
-                                wifi_kickApAssociatedDevice(apIndex, acl,action);
+                                apply_rules(apIndex, acl,action,interface);
                                 device_count++;
                                 //Register mac to be blocked ,in syscfg.db persistent storage 
-                                sprintf(buf,"syscfg set macfilter%d %s",device_count,acl);
+                                sprintf(buf,"syscfg set %dmacfilter%d %s",apIndex,device_count,acl);
                                 system(buf);
-                                system("syscfg commit");
-                                sprintf(buf,"syscfg set countfilter %d",device_count);
+                                sprintf(buf,"syscfg set %dcountfilter %d",apIndex,device_count);
                                 system(buf);
                                 system("syscfg commit");
 
-                                //Disconnect the connected device
-                                sprintf(buf,"hostapd_cli -p /var/run/hostapd%d disassociate %s",apIndex,acl);
-                                system(buf);
+                                wifi_kickApAssociatedDevice(apIndex, acl);
                         }
                         acl = strtok (NULL, ",");
                 }
        } else {
                 int device_count=0;
+                char cmdmac[20]={'\0'};
                 strcpy(action,"ALLOW");
                 //kick off the MAC which is not in ACL array (allow list)
                 acl = strtok (aclArray,",");
                 while (acl != NULL) {
                         if(strlen(acl)>=17)
                         {
-                                wifi_kickApAssociatedDevice(apIndex, acl,action);
+                                apply_rules(apIndex, acl,action,interface);
                                 device_count++;
                                 //Register mac to be Allowed ,in syscfg.db persistent storage 
-                                sprintf(buf,"syscfg set macfilter%d %s",device_count,acl);
+                                sprintf(buf,"syscfg set %dmacfilter%d %s",apIndex,device_count,acl);
                                 system(buf);
-                                system("syscfg commit");
-                                sprintf(buf,"syscfg set countfilter %d",device_count);
+                                sprintf(buf,"syscfg set %dcountfilter %d",apIndex,device_count);
                                 system(buf);
-                                system("syscfg commit");
+                                sprintf(cmdmac,"%s",acl);
                         }
                         acl = strtok (NULL, ",");
                 }
+                sprintf(buf,"iptables -A WifiServices%d -m physdev --physdev-in %s -m mac ! --mac-source %s -j DROP",apIndex,interface,cmdmac);
+                system(buf);
+
+                //Disconnect the mac which is not in ACL
                 asso = strtok (assocArray,",");
                 while (asso != NULL) {
-                        //Disconnect the mac which is not in ACL
-                        if(strlen(asso)>=17 && !strcasestr(aclArray, asso)) {
-                                sprintf(buf,"hostapd_cli -p /var/run/hostapd%d disassociate %s",apIndex,asso);
-                                system(buf);
-                        }
+                        if(strlen(asso)>=17 && !strcasestr(aclArray, asso))
+                                 wifi_kickApAssociatedDevice(apIndex, asso);
+
                         asso = strtok (NULL, ",");
                 }
-	}	    
+        }
 
     return RETURN_OK;
 }
@@ -3798,32 +3833,24 @@ INT wifi_kickApAclAssociatedDevices(INT apIndex, BOOL enable)
 // sets the mac address filter control mode.  0 == filter disabled, 1 == filter as whitelist, 2 == filter as blacklist
 INT wifi_setApMacAddressControlMode(INT apIndex, INT filterMode)
 {
-        FILE *fr,*fp=NULL;
-        char secbuf[20]={'\0'};
-        int sec=0;
-        char buf[256]={'\0'};
-        fr=popen("awk '{print $1}' /proc/uptime","r");
-        fgets(secbuf,sizeof(secbuf),fr);
-        sec=atoi(secbuf);
-        //Dont apply filter-mode as 0 on boot-up
-        if(sec<90)
-           return RETURN_OK;
-       
-        //Default INPUT Policy as ACCEPT
-        system("iptables -P INPUT ACCEPT");
+       char buf[256]={'\0'};
 
-        //Set the macfilter mode for boot-up recovery
-        sprintf(buf,"syscfg set blockall %d",filterMode);
-        system(buf);
-        system("syscfg commit");
+       if(apIndex==0 || apIndex==1)
+       {
+           //set the filtermode
+           sprintf(buf,"syscfg set %dblockall %d",apIndex,filterMode);
+           system(buf);
+           system("syscfg commit");
 
-        //Clear all previous rules
-        sprintf(buf,"iptables -L --line-numbers | grep MAC | cut -d ' ' -f1 | tr -s ' '");
-        fp=popen(buf, "r");
-        recr(fp);
+           if(filterMode==0)
+           {
+              sprintf(buf,"iptables -F  WifiServices%d",apIndex);
+              system(buf);
+              return RETURN_OK;
+           }
+       }
+       return RETURN_OK;
 
-	//apply instantly
-	return RETURN_OK;
 }
 
 // enables internal gateway VLAN mode.  In this mode a Vlan tag is added to upstream (received) data packets before exiting the Wifi driver.  VLAN tags in downstream data are stripped from data packets before transmission.  Default is FALSE. 
