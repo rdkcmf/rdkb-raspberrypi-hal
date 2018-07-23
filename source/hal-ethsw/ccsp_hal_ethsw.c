@@ -168,11 +168,17 @@ CcspHalEthSwGetPortStatus
         PCCSP_HAL_ETHSW_LINK_STATUS pStatus
     )
 {
+  char *path;
+  path = (char *)malloc(20);
+  path="/sys/class/net/eth1";
 
-if(!admin_status)
-  *pStatus  = CCSP_HAL_ETHSW_LINK_Up;
-else
-  *pStatus   = CCSP_HAL_ETHSW_LINK_Down;
+  int eth_if = is_interface_exists(path);
+
+  if(!admin_status && eth_if)
+       *pStatus  = CCSP_HAL_ETHSW_LINK_Up;
+  else
+       *pStatus   = CCSP_HAL_ETHSW_LINK_Down;
+
 
     switch (PortId)
     {
