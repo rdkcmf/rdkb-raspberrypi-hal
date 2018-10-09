@@ -93,6 +93,7 @@ static BOOL Radio_flag = TRUE;
 //For Getting Current Interface Name from corresponding hostapd configuration
 void GetInterfaceName(char *interface_name,char *conf_file)
 {
+    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         FILE *fp = NULL;
         char path[MAX_BUF_SIZE] = {0},output_string[MAX_BUF_SIZE] = {0},fname[MAX_BUF_SIZE] = {0};
         int count = 0;
@@ -113,10 +114,12 @@ void GetInterfaceName(char *interface_name,char *conf_file)
                 interface_name[count] = output_string[count];
         interface_name[count]='\0';
         pclose(fp);
+    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 INT File_Reading(CHAR *file,char *Value)
 {
+    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         FILE *fp = NULL;
         char buf[1024] = {0},copy_buf[512] ={0};
         int count = 0;
@@ -131,22 +134,26 @@ INT File_Reading(CHAR *file,char *Value)
         }
         strcpy(Value,copy_buf);
         pclose(fp);
+    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }
 
 //Restarting the hostapd process
 void restarthostapd_all(char *hostapd_configuration)
 {
+    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char buf[512] = {0};
 	sprintf(buf,"%s%s%s","ps -eaf | grep ",hostapd_configuration," | grep -v grep | awk '{print $1}' | xargs kill -9");
 	system(buf);
         system("sleep 3");
 	sprintf(buf,"%s%s","/usr/sbin/hostapd -B ",hostapd_configuration);
 	system(buf);
+    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void wifi_RestartHostapd_5G(INT radioIndex)
 {
+    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	if(radioIndex == 1)
 		system("ps -eaf | grep hostapd1.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
 	else if(radioIndex == 5)
@@ -155,25 +162,46 @@ void wifi_RestartHostapd_5G(INT radioIndex)
         system("sleep 3");
         system("modprobe rtl8812au");
         system("sleep 5");
+    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void wifi_RestartHostapd_2G()
 {
+    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	system("ps -eaf | grep hostapd4.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
 	system("rmmod 8192eu");
 	system("sleep 3");
 	system("modprobe 8192eu");
 	system("sleep 5");
+    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void wifi_RestartPrivateWifi_2G()
 {
+    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	char buf[512] = {0};
+	char interface_name[512] = {0},rpi_board_status[512] = {0};
+	int count = 0;
 	system("ps -eaf | grep hostapd0.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
         system("sleep 2");
+	_syscmd("cat /proc/device-tree/model | cut -d ' ' -f5-6",buf,sizeof(buf));
+	for(count = 0;buf[count]!='\n';count++)
+                rpi_board_status[count] = buf[count]; //ajusting the size
+        rpi_board_status[count] = '\0';
+	if(strcmp(rpi_board_status,"B Plus") == 0)
+	{
+		GetInterfaceName(interface_name,"/nvram/hostapd0.conf");
+		sprintf(buf,"%s%s%s","ifconfig ",interface_name," down");		
+		system(buf);
+	}
+	else
+	{
         system("rmmod brcmfmac");
         system("sleep 3");
         system("modprobe brcmfmac");
         system("sleep 5");
+	}
+    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 int _syscmd(char *cmd, char *retBuf, int retBufSize)
@@ -926,6 +954,7 @@ INT wifi_getSSIDNumberOfEntries(ULONG *output) //Tr181
 //Get the Radio enable config parameter
 INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 {
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char cmd[MAX_CMD_SIZE]={'\0'};
 	char buf[MAX_BUF_SIZE]={'\0'};
 	char HConf_file[MAX_BUF_SIZE]={'\0'};
@@ -942,6 +971,7 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 		{
 			return RETURN_ERR;
 		} else {
+			sleep(3);
 			sprintf(cmd,"%s%s%s","ifconfig ",IfName," | grep RUNNING | tr -s ' ' | cut -d ' ' -f4");
 			_syscmd(cmd,buf,sizeof(buf));
 			if(strlen(buf)>0)
