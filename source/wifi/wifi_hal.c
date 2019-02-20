@@ -158,9 +158,9 @@ void wifi_RestartHostapd_5G(INT radioIndex)
 		system("ps -eaf | grep hostapd1.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
 	else if(radioIndex == 5)
 		system("ps -eaf | grep hostapd5.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
-        system("rmmod rtl8812au");
+        system("rmmod rtl8812au && rmmod 88x2bu");
         system("sleep 3");
-        system("modprobe rtl8812au");
+        system("modprobe rtl8812au && modprobe 88x2bu");
         system("sleep 5");
     	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
@@ -3970,7 +3970,13 @@ INT wifi_startHostApd()
 		}
 	}
 #endif
-	system("systemctl restart hostapd.service");
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	system("systemctl start hostapd.service");
+        system("echo 1 > /tmp/Get2gssidEnable.txt");
+        system("echo 1 > /tmp/Get5gssidEnable.txt");
+        system("echo 1 > /tmp/GetPub2gssidEnable.txt");
+        system("echo 1 > /tmp/GetPub5gssidEnable.txt");
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -3980,16 +3986,27 @@ INT wifi_stopHostApd()
 {
 	char cmd[128] = {0};
 	char buf[128] = {0};
-	
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	sprintf(cmd,"killall hostapd");
 	_syscmd(cmd, buf, sizeof(buf));
-	
+	system("ifconfig wlan0 down");	
+	system("ifconfig wlan1 down");	
+	system("ifconfig wlan2 down");	
+	system("ifconfig wlan3 down");
+        system("echo 0 > /tmp/Get2gssidEnable.txt");
+        system("echo 0 > /tmp/Get5gssidEnable.txt");
+        system("echo 0 > /tmp/GetPub2gssidEnable.txt");
+        system("echo 0 > /tmp/GetPub5gssidEnable.txt");
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;	
 }
 
 // restart hostapd dummy function
 INT wifi_restartHostApd()
 {
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	system("systemctl restart hostapd.service");
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }
 
@@ -5272,12 +5289,9 @@ INT wifi_pushRxChainMask(INT radioIndex)
 
 INT wifi_pushSSID(INT apIndex, CHAR *ssid)
 {
-    char cmd[128];
-    char buf[1024];
-    
-	snprintf(cmd, sizeof(cmd), "iwconfig %s%d essid \"%s\"",AP_PREFIX, apIndex, ssid);
-    _syscmd(cmd, buf, sizeof(buf));
-
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+    wifi_setSSIDName(apIndex,ssid);
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
