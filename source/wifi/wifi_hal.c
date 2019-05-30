@@ -91,103 +91,128 @@ static BOOL Radio_flag = TRUE;
 //wifi_setApBeaconRate(1, beaconRate);
 
 //For Getting Current Interface Name from corresponding hostapd configuration
-void GetInterfaceName(char *interface_name,char *conf_file)
+void GetInterfaceName(char *interface_name, char *conf_file)
 {
-    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-        FILE *fp = NULL;
-        char path[MAX_BUF_SIZE] = {0},output_string[MAX_BUF_SIZE] = {0},fname[MAX_BUF_SIZE] = {0};
-        int count = 0;
-        char *interface = NULL;
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	FILE *fp = NULL;
+	char path[MAX_BUF_SIZE] = {0},output_string[MAX_BUF_SIZE] = {0},fname[MAX_BUF_SIZE] = {0};
+	int count = 0;
+	char *interface = NULL;
+
+	fp = fopen(conf_file, "r");
+	if(fp == NULL)
+	{
+		printf("conf_file %s not exists \n", conf_file);
+		return;
+	}
+	fclose(fp);
+	
 	sprintf(fname,"%s%s%s","cat ",conf_file," | grep interface=");
 	fp = popen(fname,"r");
-        if(fp == NULL)
-        {
-                printf("Failed to run command in Function %s\n",__FUNCTION__);
-                return 0;
-        }
-        if(fgets(path, sizeof(path)-1, fp) != NULL)
-        {
-                interface = strchr(path,'=');
-                strcpy(output_string,interface+1);
-        }
-        for(count = 0;output_string[count]!='\n';count++)
-                interface_name[count] = output_string[count];
-        interface_name[count]='\0';
-        pclose(fp);
-    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	if(fp == NULL)
+	{
+			printf("Failed to run command in Function %s\n",__FUNCTION__);
+			strcpy(interface_name, "");
+			return;
+	}
+	if(fgets(path, sizeof(path)-1, fp) != NULL)
+	{
+			interface = strchr(path,'=');
+			
+			if(interface != NULL)
+				strcpy(output_string, interface+1);
+	}
+
+	for(count = 0;output_string[count]!='\n';count++)
+			interface_name[count] = output_string[count];
+	interface_name[count]='\0';
+	
+	printf("Interface name %s \n", interface_name);
+	
+	pclose(fp);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
-INT File_Reading(CHAR *file,char *Value)
+INT File_Reading(CHAR *file, char *Value)
 {
-    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-        FILE *fp = NULL;
-        char buf[1024] = {0},copy_buf[512] ={0};
-        int count = 0;
-        fp = popen(file,"r");
-        if(fp == NULL)
-                return RETURN_ERR;
-        if(fgets(buf,sizeof(buf) -1,fp) != NULL)
-        {
-                for(count=0;buf[count]!='\n';count++)
-                        copy_buf[count]=buf[count];
-                copy_buf[count]='\0';
-        }
-        strcpy(Value,copy_buf);
-        pclose(fp);
-    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-        return RETURN_OK;
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	FILE *fp = NULL;
+	char buf[MAX_CMD_SIZE] = {0}, copy_buf[MAX_CMD_SIZE] ={0};
+	int count = 0;
+
+	fp = popen(file,"r");
+	if(fp == NULL)
+	{
+			return RETURN_ERR;
+	}
+
+	if(fgets(buf,sizeof(buf) -1,fp) != NULL)
+	{
+			for(count=0;buf[count]!='\n';count++)
+					copy_buf[count]=buf[count];
+			copy_buf[count]='\0';
+	}
+	strcpy(Value,copy_buf);
+	pclose(fp);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
 }
 
 //Restarting the hostapd process
 void restarthostapd_all(char *hostapd_configuration)
 {
-    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char buf[512] = {0};
 	sprintf(buf,"%s%s%s","ps -eaf | grep ",hostapd_configuration," | grep -v grep | awk '{print $1}' | xargs kill -9");
 	system(buf);
-        system("sleep 3");
+	system("sleep 3");
 	sprintf(buf,"%s%s","/usr/sbin/hostapd -B ",hostapd_configuration);
 	system(buf);
-    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void wifi_RestartHostapd_5G(INT radioIndex)
 {
-    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+
 	if(radioIndex == 1)
 		system("ps -eaf | grep hostapd1.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
 	else if(radioIndex == 5)
 		system("ps -eaf | grep hostapd5.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
-        system("rmmod rtl8812au && rmmod 88x2bu");
-        system("sleep 3");
-        system("modprobe rtl8812au && modprobe 88x2bu");
-        system("sleep 5");
-    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+
+	system("rmmod rtl8812au && rmmod 88x2bu");
+	system("sleep 3");
+	system("modprobe rtl8812au && modprobe 88x2bu");
+	system("sleep 5");
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void wifi_RestartHostapd_2G()
 {
-    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	system("ps -eaf | grep hostapd4.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
 	system("rmmod 8192eu");
 	system("sleep 3");
 	system("modprobe 8192eu");
 	system("sleep 5");
-    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void wifi_RestartPrivateWifi_2G()
 {
-    	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char buf[512] = {0};
 	char interface_name[512] = {0},rpi_board_status[512] = {0};
 	int count = 0;
 	system("ps -eaf | grep hostapd0.conf | grep -v grep | awk '{print $1}' | xargs kill -9");
-        system("sleep 2");
+    system("sleep 2");
 	_syscmd("cat /proc/device-tree/model | cut -d ' ' -f5-6",buf,sizeof(buf));
+
 	for(count = 0;buf[count]!='\n';count++)
-                rpi_board_status[count] = buf[count]; //ajusting the size
-        rpi_board_status[count] = '\0';
+        rpi_board_status[count] = buf[count]; //ajusting the size
+    
+	rpi_board_status[count] = '\0';
+	
 	if(strcmp(rpi_board_status,"B Plus") == 0)
 	{
 		GetInterfaceName(interface_name,"/nvram/hostapd0.conf");
@@ -201,7 +226,7 @@ void wifi_RestartPrivateWifi_2G()
         system("modprobe brcmfmac");
         system("sleep 5");
 	}
-    	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 int _syscmd(char *cmd, char *retBuf, int retBufSize)
@@ -219,17 +244,19 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
     while(!feof(f))
     {
         *ptr = 0;
-	if(bufSize>=128) {
-	   bufbytes=128;
-	} else {
-	   bufbytes=bufSize-1;
-	}
+		if(bufSize>=128) {
+		bufbytes=128;
+		} else {
+		bufbytes=bufSize-1;
+		}
 		
-        fgets(ptr,bufbytes,f); 
-	readbytes=strlen(ptr);
-        if( readbytes== 0)        
+    	fgets(ptr,bufbytes,f); 
+		readbytes=strlen(ptr);
+        
+		if( readbytes== 0)        
             break;
-        bufSize-=readbytes;
+        
+		bufSize-=readbytes;
         ptr += readbytes;
     }
     pclose(f);
@@ -239,32 +266,32 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
 }
 static int writeBandWidth(int radioIndex,char *bw_value)
 {
-        char buf[MAX_BUF_SIZE];
-        char cmd[MAX_CMD_SIZE];
-        sprintf(cmd,"sed -i 's/^SET_BW%d=.*$/SET_BW%d=%s/' %s",radioIndex,radioIndex,bw_value,BW_FNAME);
-        _syscmd(cmd,buf,sizeof(buf));
-        return RETURN_OK;
+	char buf[MAX_BUF_SIZE];
+	char cmd[MAX_CMD_SIZE];
+	sprintf(cmd,"sed -i 's/^SET_BW%d=.*$/SET_BW%d=%s/' %s",radioIndex,radioIndex,bw_value,BW_FNAME);
+	_syscmd(cmd,buf,sizeof(buf));
+	return RETURN_OK;
 }
 
 static int readBandWidth(int radioIndex,char *bw_value)
 {
-        char buf[MAX_BUF_SIZE];
-        char cmd[MAX_CMD_SIZE];
-        sprintf(cmd,"grep 'SET_BW%d=' %s | sed 's/^.*=//'",radioIndex,BW_FNAME);
-        _syscmd(cmd,buf,sizeof(buf));
-        if(NULL!=strstr(buf,"20MHz"))
-        {
-                strcpy(bw_value,"20MHz");
-        }
-        else if(NULL!=strstr(buf,"40MHz"))
-        {
-                strcpy(bw_value,"40MHz");
-        }
-  	else
-        {
-        	return RETURN_ERR;
-        }
-        return RETURN_OK;
+	char buf[MAX_BUF_SIZE];
+	char cmd[MAX_CMD_SIZE];
+	sprintf(cmd,"grep 'SET_BW%d=' %s | sed 's/^.*=//'",radioIndex,BW_FNAME);
+	_syscmd(cmd,buf,sizeof(buf));
+	if(NULL!=strstr(buf,"20MHz"))
+	{
+			strcpy(bw_value,"20MHz");
+	}
+	else if(NULL!=strstr(buf,"40MHz"))
+	{
+			strcpy(bw_value,"40MHz");
+	}
+	else
+	{
+		return RETURN_ERR;
+	}
+	return RETURN_OK;
 }
 /**************************************************************************/
 /*! \fn void add_ifnames_in_bridge()
@@ -318,8 +345,7 @@ static INT list_add_param(param_list_t *list,struct params params)
     WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     if(list->parameter_list==NULL)
     {
-
-        if(list->parameter_list=(struct params *)calloc(1,(sizeof(struct params))))
+		if(list->parameter_list=(struct params *)calloc(1,(sizeof(struct params))))
         {
             list->count=1;
             memcpy(&(list->parameter_list[list->count-1]),&params,sizeof(params));
@@ -406,7 +432,7 @@ static INT get_param_value(char *parameter, char *output)
  **************************************************************************/
 static INT prepare_hostapd_conf()
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char cmd[128];
     /* check  /usr/ccsp/wifi/hostapd0.conf, /usr/ccsp/wifi/hostapd0.conf , /usr/ccsp/wifi/hostapd4.conf,/usr/ccsp/wifi/hostapd5.conf exists or not */
 	if(( access(DEF_HOSTAPD_CONF_0, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_1, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_4, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_5, F_OK) != -1 ))
@@ -468,6 +494,7 @@ static INT prepare_hostapd_conf()
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
+
 void wifi_newApAssociatedDevice_callback_register(wifi_newApAssociatedDevice_callback callback_proc)
 {
 }
@@ -581,7 +608,7 @@ INT wifi_factoryResetRadios()
 */
 INT wifi_factoryResetRadio(int radioIndex) 	//RDKB
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char param_name[64];
 	struct params params={0};
 	param_list_t list;
@@ -1621,12 +1648,12 @@ INT wifi_getRadioPossibleChannels(INT radioIndex, CHAR *output_string)	//RDKB
         if(radioIndex == 0)
 	{
                 GetInterfaceName(IFName,"/nvram/hostapd0.conf");
-                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 	}
         else if(radioIndex == 1)
 	{
                 GetInterfaceName(IFName,"/nvram/hostapd1.conf");
-                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep '5\.[1-9]' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+                sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep '5\\.[1-9]' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 	}
         _syscmd(cmd, buf, sizeof(buf));
 	if(strlen(buf) > 0)
@@ -1651,12 +1678,12 @@ INT wifi_getRadioChannelsInUse(INT radioIndex, CHAR *output_string)	//RDKB
 	if(radioIndex == 0)
 	{
 		GetInterfaceName(IFName,"/nvram/hostapd0.conf");
-		sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+		sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 2'\\.' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 | sed 's/^0//g' | tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 	}
 	else if(radioIndex == 1)
 	{
 		GetInterfaceName(IFName,"/nvram/hostapd1.conf");
-		sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\.[1-9]' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
+		sprintf(cmd,"%s %s %s","iwlist",IFName,"channel  | grep Channel | grep -v 'Current Frequency' | grep 5'\\.[1-9]' | cut -d ':' -f1 | tr -s ' ' | cut -d ' ' -f3 |tr '\\n' ' ' | sed 's/ /,/g' | sed 's/,$/ /g'");
 	}
 	_syscmd(cmd,buf, sizeof(buf));
 	if(strlen(buf) > 0)
@@ -2565,14 +2592,138 @@ INT wifi_setRadioBasicDataTransmitRates(INT radioIndex, CHAR *TransmitRates)
 	return RETURN_OK;
 }
 
+//passing the hostapd configuration file and get the virtual interface of xfinity(2g)
+INT GetInterfaceName_virtualInterfaceName_2G(char interface_name[50])
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n", __func__, __LINE__);
+	FILE *fp = NULL;
+	char path[256] = {0}, output_string[256] = {0};
+	int count = 0;
+	char *interface = NULL;
 
+	fp = popen("cat /nvram/hostapd0.conf | grep -w bss", "r");
+	if (fp == NULL)
+	{
+		printf("Failed to run command in Function %s\n", __FUNCTION__);
+		return RETURN_ERR;
+	}
+	if (fgets(path, sizeof(path) - 1, fp) != NULL)
+	{
+		interface = strchr(path, '=');
+
+		if (interface != NULL)
+		{
+			strcpy(output_string, interface + 1);
+			for (count = 0; output_string[count] != '\n' || output_string[count] != '\0'; count++)
+				interface_name[count] = output_string[count];
+
+			interface_name[count] = '\0';
+		}
+	}
+	pclose(fp);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n", __func__, __LINE__);
+	return RETURN_OK;
+}
+
+INT wifi_halGetIfStatsNull(wifi_radioTrafficStats2_t *output_struct)
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n", __func__, __LINE__);
+	output_struct->radio_BytesSent = 0;
+	output_struct->radio_BytesReceived = 0;
+	output_struct->radio_PacketsSent = 0;
+	output_struct->radio_PacketsReceived = 0;
+	output_struct->radio_ErrorsSent = 0;
+	output_struct->radio_ErrorsReceived = 0;
+	output_struct->radio_DiscardPacketsSent = 0;
+	output_struct->radio_DiscardPacketsReceived = 0;
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n", __func__, __LINE__);
+	return RETURN_OK;
+}
+
+
+INT wifi_halGetIfStats(char *ifname, wifi_radioTrafficStats2_t *pStats)
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n", __func__, __LINE__);
+	CHAR buf[MAX_CMD_SIZE] = {0};
+	CHAR Value[MAX_BUF_SIZE] = {0};
+	FILE *fp = NULL;
+
+	if (ifname == NULL || strlen(ifname) <= 1)
+		return RETURN_OK;
+
+	snprintf(buf, sizeof(buf), "ifconfig -a %s > /tmp/Radio_Stats.txt", ifname);
+	system(buf);
+
+	fp = fopen("/tmp/Radio_Stats.txt", "r");
+	if(fp == NULL)
+	{
+		printf("/tmp/Radio_Stats.txt not exists \n");
+		return RETURN_ERR;
+	}
+	fclose(fp);
+	
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'RX packets' | tr -s ' ' | cut -d ':' -f2 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_PacketsReceived = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'TX packets' | tr -s ' ' | cut -d ':' -f2 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_PacketsSent = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'RX bytes' | tr -s ' ' | cut -d ':' -f2 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_BytesReceived = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'TX bytes' | tr -s ' ' | cut -d ':' -f3 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_BytesSent = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'RX packets' | tr -s ' ' | cut -d ':' -f3 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_ErrorsReceived = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'TX packets' | tr -s ' ' | cut -d ':' -f3 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_ErrorsSent = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'RX packets' | tr -s ' ' | cut -d ':' -f4 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_DiscardPacketsReceived = strtoul(Value, NULL, 10);
+
+	sprintf(buf, "cat /tmp/Radio_Stats.txt | grep 'TX packets' | tr -s ' ' | cut -d ':' -f4 | cut -d ' ' -f1");
+	File_Reading(buf, Value);
+	pStats->radio_DiscardPacketsSent = strtoul(Value, NULL, 10);
+
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n", __func__, __LINE__);
+	return RETURN_OK;
+}
+
+INT GetIfacestatus(CHAR *interface_name, CHAR *status)
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n", __func__, __LINE__);
+	CHAR buf[MAX_CMD_SIZE] = {0};
+	FILE *fp = NULL;
+	INT count = 0;
+
+	if (interface_name != NULL && (strlen(interface_name) > 1) && status != NULL)
+	{
+		sprintf(buf, "%s%s%s%s%s", "ifconfig -a ", interface_name, " | grep ", interface_name, " | wc -l");
+		File_Reading(buf, status);
+	}
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n", __func__, __LINE__);
+	return RETURN_OK;
+}
 
 //Get detail radio traffic static info
 INT wifi_getRadioTrafficStats2(INT radioIndex, wifi_radioTrafficStats2_t *output_struct) //Tr181
 {
-	if (NULL == output_struct) 
+
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n", __func__, __LINE__);
+
+	if (NULL == output_struct)
 		return RETURN_ERR;
-		
+
+#if 0	
 	//ifconfig radio_x	
 	output_struct->radio_BytesSent=250;	//The total number of bytes transmitted out of the interface, including framing characters.
 	output_struct->radio_BytesReceived=168;	//The total number of bytes received on the interface, including framing characters.
@@ -2583,6 +2734,7 @@ INT wifi_getRadioTrafficStats2(INT radioIndex, wifi_radioTrafficStats2_t *output
 	output_struct->radio_ErrorsReceived=0;    //The total number of inbound packets that contained errors preventing them from being delivered to a higher-layer protocol.
 	output_struct->radio_DiscardPacketsSent=0; //The total number of outbound packets which were chosen to be discarded even though no errors had been detected to prevent their being transmitted. One possible reason for discarding such a packet could be to free up buffer space.
 	output_struct->radio_DiscardPacketsReceived=0; //The total number of inbound packets which were chosen to be discarded even though no errors had been detected to prevent their being delivered. One possible reason for discarding such a packet could be to free up buffer space.
+	
 	output_struct->radio_PLCPErrorCount=0;	//The number of packets that were received with a detected Physical Layer Convergence Protocol (PLCP) header error.	
 	output_struct->radio_FCSErrorCount=0;	//The number of packets that were received with a detected FCS error. This parameter is based on dot11FCSErrorCount from [Annex C/802.11-2012].
 	output_struct->radio_InvalidMACCount=0;	//The number of packets that were received with a detected invalid MAC header error.
@@ -2598,9 +2750,96 @@ INT wifi_getRadioTrafficStats2(INT radioIndex, wifi_radioTrafficStats2_t *output
 	output_struct->radio_MedianNoiseFloorOnChannel=-1;  //Median Noise on the channel during the measuring interval.   The metric is updated in this parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected in the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1. Units in dBm
 	output_struct->radio_StatisticsStartTime=0; 	    //The date and time at which the collection of the current set of statistics started.  This time must be updated whenever the radio statistics are reset.
 	
-	return RETURN_OK;	
-}
+	return RETURN_OK;
+#endif
 
+	CHAR private_interface_name[MAX_BUF_SIZE] = {0}, public_interface_name[MAX_BUF_SIZE] = {0};
+	CHAR private_interface_status[MAX_BUF_SIZE] = {0}, public_interface_status[MAX_BUF_SIZE] = {0};
+	char buf[MAX_BUF_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
+	wifi_radioTrafficStats2_t private_radioTrafficStats = {0}, public_radioTrafficStats = {0};
+
+	if (radioIndex == 0) //2.4GHz ?
+	{
+
+		GetInterfaceName(private_interface_name, "/nvram/hostapd0.conf");
+
+		GetIfacestatus(private_interface_name, private_interface_status);
+
+		sprintf(cmd, "%s", "cat /nvram/hostapd0.conf | grep bss=");
+		File_Reading(cmd, buf);
+
+		if (buf[0] == '#') //TP-link
+		{
+			GetInterfaceName(public_interface_name, "/nvram/hostapd4.conf");
+		}
+		else //Tenda
+		{
+			GetInterfaceName_virtualInterfaceName_2G(public_interface_name);
+		}
+
+		GetIfacestatus(public_interface_name, public_interface_status);
+
+		printf("private_interface_name %s private_interface_status %s \n", private_interface_name, private_interface_status);
+		printf("public_interface_name %s public_interface_status %s \n", public_interface_name, public_interface_status);
+
+		if (strcmp(private_interface_status, "1") == 0)
+			wifi_halGetIfStats(private_interface_name, &private_radioTrafficStats);
+		else
+			wifi_halGetIfStatsNull(&private_radioTrafficStats);
+
+		if (strcmp(public_interface_status, "1") == 0)
+			wifi_halGetIfStats(public_interface_name, &public_radioTrafficStats);
+		else
+			wifi_halGetIfStatsNull(&public_radioTrafficStats);
+	}
+	else if (radioIndex == 1) //5GHz ?
+	{
+		GetInterfaceName(private_interface_name, "/nvram/hostapd1.conf");
+		GetIfacestatus(private_interface_name, private_interface_status);
+
+		GetInterfaceName(public_interface_name, "/nvram/hostapd5.conf");
+		GetIfacestatus(public_interface_name, public_interface_status);
+
+		if (strcmp(private_interface_status, "1") == 0)
+			wifi_halGetIfStats(private_interface_name, &private_radioTrafficStats);
+		else
+			wifi_halGetIfStatsNull(&private_radioTrafficStats);
+
+		if (strcmp(public_interface_status, "1") == 0)
+			wifi_halGetIfStats(public_interface_name, &public_radioTrafficStats);
+		else
+			wifi_halGetIfStatsNull(&public_radioTrafficStats);
+	}
+
+	output_struct->radio_BytesSent = private_radioTrafficStats.radio_BytesSent + public_radioTrafficStats.radio_BytesSent;
+	output_struct->radio_BytesReceived = private_radioTrafficStats.radio_BytesReceived + public_radioTrafficStats.radio_BytesReceived;
+	output_struct->radio_PacketsSent = private_radioTrafficStats.radio_PacketsSent + public_radioTrafficStats.radio_PacketsSent;
+	output_struct->radio_PacketsReceived = private_radioTrafficStats.radio_PacketsReceived + public_radioTrafficStats.radio_PacketsReceived;
+	output_struct->radio_ErrorsSent = private_radioTrafficStats.radio_ErrorsSent + public_radioTrafficStats.radio_ErrorsSent;
+	output_struct->radio_ErrorsReceived = private_radioTrafficStats.radio_ErrorsReceived + public_radioTrafficStats.radio_ErrorsReceived;
+	output_struct->radio_DiscardPacketsSent = private_radioTrafficStats.radio_DiscardPacketsSent + public_radioTrafficStats.radio_DiscardPacketsSent;
+	output_struct->radio_DiscardPacketsReceived = private_radioTrafficStats.radio_DiscardPacketsReceived + public_radioTrafficStats.radio_DiscardPacketsReceived;
+
+	output_struct->radio_PLCPErrorCount = 0;				  //The number of packets that were received with a detected Physical Layer Convergence Protocol (PLCP) header error.
+	output_struct->radio_FCSErrorCount = 0;					  //The number of packets that were received with a detected FCS error. This parameter is based on dot11FCSErrorCount from [Annex C/802.11-2012].
+	output_struct->radio_InvalidMACCount = 0;				  //The number of packets that were received with a detected invalid MAC header error.
+	output_struct->radio_PacketsOtherReceived = 0;			  //The number of packets that were received, but which were destined for a MAC address that is not associated with this interface.
+	output_struct->radio_NoiseFloor = -99;					  //The noise floor for this radio channel where a recoverable signal can be obtained. Expressed as a signed integer in the range (-110:0).  Measurement should capture all energy (in dBm) from sources other than Wi-Fi devices as well as interference from Wi-Fi devices too weak to be decoded. Measured in dBm
+	output_struct->radio_ChannelUtilization = 35;			  //Percentage of time the channel was occupied by the radio\92s own activity (Activity Factor) or the activity of other radios.  Channel utilization MUST cover all user traffic, management traffic, and time the radio was unavailable for CSMA activities, including DIFS intervals, etc.  The metric is calculated and updated in this parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected from the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1.  Units in Percentage
+	output_struct->radio_ActivityFactor = 2;				  //Percentage of time that the radio was transmitting or receiving Wi-Fi packets to/from associated clients. Activity factor MUST include all traffic that deals with communication between the radio and clients associated to the radio as well as management overhead for the radio, including NAV timers, beacons, probe responses,time for receiving devices to send an ACK, SIFC intervals, etc.  The metric is calculated and updated in this parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected from the just completed interval.   If this metric is queried before it has been updated with an initial calculation, it MUST return -1. Units in Percentage
+	output_struct->radio_CarrierSenseThreshold_Exceeded = 20; //Percentage of time that the radio was unable to transmit or receive Wi-Fi packets to/from associated clients due to energy detection (ED) on the channel or clear channel assessment (CCA). The metric is calculated and updated in this Parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected from the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1. Units in Percentage
+	output_struct->radio_RetransmissionMetirc = 0;			  //Percentage of packets that had to be re-transmitted. Multiple re-transmissions of the same packet count as one.  The metric is calculated and updated in this parameter at the end of the interval defined by "Radio Statistics Measuring Interval".   The calculation of this metric MUST only use the data collected from the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1. Units  in percentage
+
+	output_struct->radio_MaximumNoiseFloorOnChannel = -1; //Maximum Noise on the channel during the measuring interval.  The metric is updated in this parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected in the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1.  Units in dBm
+	output_struct->radio_MinimumNoiseFloorOnChannel = -1; //Minimum Noise on the channel. The metric is updated in this Parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected in the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1. Units in dBm
+	output_struct->radio_MedianNoiseFloorOnChannel = -1;  //Median Noise on the channel during the measuring interval.   The metric is updated in this parameter at the end of the interval defined by "Radio Statistics Measuring Interval".  The calculation of this metric MUST only use the data collected in the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1. Units in dBm
+	output_struct->radio_StatisticsStartTime = 0;		  //The date and time at which the collection of the current set of statistics started.  This time must be updated whenever the radio statistics are reset.
+
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n", __func__, __LINE__);
+
+	return RETURN_OK;
+}
 
 //Set radio traffic static Measureing rules
 INT wifi_setRadioTrafficStatsMeasure(INT radioIndex, wifi_radioTrafficStatsMeasure_t *input_struct) //Tr181
@@ -2751,7 +2990,6 @@ INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
   return RETURN_OK;
 }
 
-
 //Get the BSSID 
 INT wifi_getBaseBSSID(INT ssidIndex, CHAR *output_string)	//RDKB
 {
@@ -2863,8 +3101,6 @@ INT wifi_applySSIDSettings(INT ssidIndex)
 	return RETURN_OK;
 }
 
-
-
 //Start the wifi scan and get the result into output buffer for RDKB to parser. The result will be used to manage endpoint list
 //HAL funciton should allocate an data structure array, and return to caller with "neighbor_ap_array"
 INT wifi_getNeighboringWiFiDiagnosticResult2(INT radioIndex, wifi_neighbor_ap2_t **neighbor_ap_array, UINT *output_array_size) //Tr181	
@@ -2911,71 +3147,196 @@ INT wifi_getNeighboringWiFiDiagnosticResult2(INT radioIndex, wifi_neighbor_ap2_t
 //>> Deprecated: used for old RDKB code. 
 INT wifi_getRadioWifiTrafficStats(INT radioIndex, wifi_radioTrafficStats_t *output_struct)
 {
-  INT status = RETURN_ERR;
-  output_struct->wifi_PLCPErrorCount = 0;
-  output_struct->wifi_FCSErrorCount = 0;
-  output_struct->wifi_InvalidMACCount = 0;
-  output_struct->wifi_PacketsOtherReceived = 0;
-  output_struct->wifi_Noise = 0;
-  status = RETURN_OK;
-  return status;
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	INT status = RETURN_ERR;
+	output_struct->wifi_PLCPErrorCount = 0;
+	output_struct->wifi_FCSErrorCount = 0;
+	output_struct->wifi_InvalidMACCount = 0;
+	output_struct->wifi_PacketsOtherReceived = 0;
+	output_struct->wifi_Noise = 0;
+	status = RETURN_OK;
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return status;
 }
 
 INT wifi_getBasicTrafficStats(INT apIndex, wifi_basicTrafficStats_t *output_struct)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-        char cmd[128];  
-	char buf[1280];
-	char *pos=NULL;
-	
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	char interface_name[MAX_BUF_SIZE] = {0};
+	char interface_status[MAX_BUF_SIZE] = {0};
+	char Value[MAX_BUF_SIZE] = {0};
+	char buf[MAX_CMD_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
+	FILE *fp = NULL;
+
 	if (NULL == output_struct) {
 		return RETURN_ERR;
-	} 
-	
+	}
 
-    memset(output_struct, 0, sizeof(wifi_basicTrafficStats_t));
+	memset(output_struct, 0, sizeof(wifi_basicTrafficStats_t));
 
-    snprintf(cmd, sizeof(cmd), "ifconfig %s%d", AP_PREFIX, apIndex);
-    _syscmd(cmd,buf, sizeof(buf));
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+	{
+		if(apIndex == 0) //private_wifi for 2.4G
+		{
+			GetInterfaceName(interface_name,"/nvram/hostapd0.conf");
+		}
+		else if(apIndex == 1) //private_wifi for 5G
+		{
+			GetInterfaceName(interface_name,"/nvram/hostapd1.conf");
+		}
+		else if(apIndex == 4) //public_wifi for 2.4G
+		{
+			sprintf(cmd,"%s","cat /nvram/hostapd0.conf | grep bss=");
+			if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+			{
+				return RETURN_ERR;
+			}
+			if(buf[0] == '#')//tp-link
+				GetInterfaceName(interface_name,"/nvram/hostapd4.conf");
+			else//tenda
+				GetInterfaceName_virtualInterfaceName_2G(interface_name);
+		}
+		else if(apIndex == 5) //public_wifi for 5G
+		{
+			GetInterfaceName(interface_name,"/nvram/hostapd5.conf");
+		}
 
-    pos = buf;
-    if((pos=strstr(pos,"RX packets:"))==NULL)
-        return RETURN_ERR;
-    output_struct->wifi_PacketsReceived = atoi(pos+strlen("RX packets:"));
-    
-    if((pos=strstr(pos,"TX packets:"))==NULL)
-        return RETURN_ERR;
-    output_struct->wifi_PacketsSent = atoi(pos+strlen("TX packets:"));
+		GetIfacestatus(interface_name, interface_status);
 
-    if((pos=strstr(pos,"RX bytes:"))==NULL)
-		return RETURN_ERR;    
-    output_struct->wifi_BytesReceived = atoi(pos+strlen("RX bytes:"));
+		if(0 != strcmp(interface_status, "1"))
+			return RETURN_ERR;
 
-    if((pos=strstr(pos,"TX bytes:"))==NULL)
-		return RETURN_ERR; 
-    output_struct->wifi_BytesSent = atoi(pos+strlen("TX bytes:"));
-        
-    sprintf(cmd, "wlanconfig %s%d list sta | grep -v HTCAP | wc -l", AP_PREFIX, apIndex);
-	_syscmd(cmd, buf, sizeof(buf));
-	sscanf(buf,"%lu", &output_struct->wifi_Associations);
+		snprintf(cmd, sizeof(cmd), "ifconfig %s > /tmp/SSID_Stats.txt", interface_name);
+		system(cmd);
+
+		fp = fopen("/tmp/SSID_Stats.txt", "r");
+		if(fp == NULL)
+		{
+			printf("/tmp/SSID_Stats.txt not exists \n");
+			return RETURN_ERR;
+		}
+		fclose(fp);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'RX packets' | tr -s ' ' | cut -d ':' -f2 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_PacketsReceived = strtoul(Value, NULL, 10);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'TX packets' | tr -s ' ' | cut -d ':' -f2 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_PacketsSent = strtoul(Value, NULL, 10);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'RX bytes' | tr -s ' ' | cut -d ':' -f2 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_BytesReceived = strtoul(Value, NULL, 10);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'TX bytes' | tr -s ' ' | cut -d ':' -f3 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_BytesSent = strtoul(Value, NULL, 10);
+
+		/* There is no specific parameter from caller to associate the value wifi_Associations */
+		//sprintf(cmd, "iw dev %s station dump | grep Station | wc -l", interface_name);
+		//_syscmd(cmd, buf, sizeof(buf));
+		//sscanf(buf,"%lu", &output_struct->wifi_Associations);
+	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
 INT wifi_getWifiTrafficStats(INT apIndex, wifi_trafficStats_t *output_struct)
 {
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+
+	char interface_name[MAX_BUF_SIZE] = {0};
+	char interface_status[MAX_BUF_SIZE] = {0};
+	char Value[MAX_BUF_SIZE] = {0};
+	char buf[MAX_CMD_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE] = {0};
+	FILE *fp = NULL;
+
 	if (NULL == output_struct) {
 		return RETURN_ERR;
-	} else {
-		memset(output_struct, 0, sizeof(wifi_trafficStats_t));
-		return RETURN_OK;
 	}
+
+	memset(output_struct, 0, sizeof(wifi_trafficStats_t));
+
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+	{
+		if(apIndex == 0) //private_wifi for 2.4G
+		{
+			GetInterfaceName(interface_name,"/nvram/hostapd0.conf");
+		}
+		else if(apIndex == 1) //private_wifi for 5G
+		{
+			GetInterfaceName(interface_name,"/nvram/hostapd1.conf");
+		}
+		else if(apIndex == 4) //public_wifi for 2.4G
+		{
+			sprintf(cmd,"%s","cat /nvram/hostapd0.conf | grep bss=");
+			if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+			{
+				return RETURN_ERR;
+			}
+			if(buf[0] == '#')//tp-link
+				GetInterfaceName(interface_name,"/nvram/hostapd4.conf");
+			else//tenda
+				GetInterfaceName_virtualInterfaceName_2G(interface_name);
+		}
+		else if(apIndex == 5) //public_wifi for 5G
+		{
+			GetInterfaceName(interface_name,"/nvram/hostapd5.conf");
+		}
+
+		GetIfacestatus(interface_name, interface_status);
+
+		if(0 != strcmp(interface_status, "1"))
+			return RETURN_ERR;
+
+		snprintf(cmd, sizeof(cmd), "ifconfig %s > /tmp/SSID_Stats.txt", interface_name);
+		system(cmd);
+
+		fp = fopen("/tmp/SSID_Stats.txt", "r");
+		if(fp == NULL)
+		{
+			printf("/tmp/SSID_Stats.txt not exists \n");
+			return RETURN_ERR;
+		}
+		fclose(fp);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'RX packets' | tr -s ' ' | cut -d ':' -f3 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_ErrorsReceived = strtoul(Value, NULL, 10);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'TX packets' | tr -s ' ' | cut -d ':' -f3 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_ErrorsSent = strtoul(Value, NULL, 10);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'RX packets' | tr -s ' ' | cut -d ':' -f4 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_DiscardedPacketsReceived = strtoul(Value, NULL, 10);
+
+		sprintf(buf, "cat /tmp/SSID_Stats.txt | grep 'TX packets' | tr -s ' ' | cut -d ':' -f4 | cut -d ' ' -f1");
+		File_Reading(buf, Value);
+		output_struct->wifi_DiscardedPacketsSent = strtoul(Value, NULL, 10);
+	}
+
+	output_struct->wifi_UnicastPacketsSent = 0;
+	output_struct->wifi_UnicastPacketsReceived = 0;
+	output_struct->wifi_MulticastPacketsSent = 0;
+	output_struct->wifi_MulticastPacketsReceived = 0;
+	output_struct->wifi_BroadcastPacketsSent = 0;
+	output_struct->wifi_BroadcastPacketsRecevied = 0;
+	output_struct->wifi_UnknownPacketsReceived = 0;
+
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
 }
 
 INT wifi_getSSIDTrafficStats(INT apIndex, wifi_ssidTrafficStats_t *output_struct)
 {
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	INT status = RETURN_ERR;
-	//Below values should get updated from hal 
+
 	output_struct->wifi_RetransCount=0;
 	output_struct->wifi_FailedRetransCount=0;
 	output_struct->wifi_RetryCount=0;
@@ -2984,6 +3345,7 @@ INT wifi_getSSIDTrafficStats(INT apIndex, wifi_ssidTrafficStats_t *output_struct
 	output_struct->wifi_AggregatedPacketCount=0;
 
 	status = RETURN_OK;
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return status;
 }
 
@@ -4983,7 +5345,7 @@ INT wifi_cancelApWPS(INT apIndex)
 //HAL funciton should allocate an data structure array, and return to caller with "associated_dev_array"
 INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_t **associated_dev_array, UINT *output_array_size)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	FILE *f;
 	int read_flag=0, auth_temp=0, mac_temp=0,i=0;
 	char cmd[256], buf[2048];
@@ -5051,75 +5413,457 @@ INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_
 	return RETURN_OK;
 }
 
+#define MACADDRESS_SIZE 6
+
+INT wifihal_AssociatedDevicesstats3(INT apIndex,CHAR *interface_name,wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+
+	FILE *fp = NULL;
+	char str[MAX_BUF_SIZE] = {0};
+	int wificlientindex = 0 ;
+	int count = 0;
+	int signalstrength = 0;
+	int arr[MACADDRESS_SIZE] = {0};
+	unsigned char mac[MACADDRESS_SIZE] = {0};
+	UINT wifi_count = 0;
+	char virtual_interface_name[MAX_BUF_SIZE] = {0};
+	char pipeCmd[MAX_CMD_SIZE] = {0};
+
+	*output_array_size = 0;
+	*associated_dev_array = NULL;
+
+	sprintf(pipeCmd, "iw dev %s station dump | grep %s | wc -l", interface_name, interface_name);
+	fp = popen(pipeCmd, "r");
+	if (fp == NULL) 
+	{
+		printf("Failed to run command inside function %s\n",__FUNCTION__ );
+		return RETURN_ERR;
+	}
+	
+	/* Read the output a line at a time - output it. */
+	fgets(str, sizeof(str)-1, fp);
+	wifi_count = (unsigned int) atoi ( str );
+	*output_array_size = wifi_count;
+	printf(" In rdkb hal ,Wifi Client Counts and index %d and  %d \n",*output_array_size,apIndex);
+	pclose(fp);
+
+	if(wifi_count == 0)
+	{
+		return RETURN_OK;
+	}
+	else
+	{
+		wifi_associated_dev3_t* temp = NULL;
+		temp = (wifi_associated_dev3_t*)calloc(1, sizeof(wifi_associated_dev3_t)*wifi_count) ;
+		if(temp == NULL)
+		{
+			printf("Error Statement. Insufficient memory \n");
+			return RETURN_ERR;
+		}
+
+		snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump > /tmp/AssociatedDevice_Stats.txt", interface_name);
+		system(pipeCmd);
+
+		fp = fopen("/tmp/AssociatedDevice_Stats.txt", "r");
+		if(fp == NULL)
+		{
+			printf("/tmp/AssociatedDevice_Stats.txt not exists \n");
+			return RETURN_ERR;
+		}
+		fclose(fp);
+
+		sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep Station | cut -d ' ' -f 2", interface_name);
+		fp = popen(pipeCmd, "r");
+		if(fp)
+		{
+			for(count =0 ; count < wifi_count; count++)
+			{
+				fgets(str, MAX_BUF_SIZE, fp);
+				if( MACADDRESS_SIZE == sscanf(str, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
+				{
+					for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
+					{
+						mac[wificlientindex] = (unsigned char) arr[wificlientindex];
+
+					}
+					memcpy(temp[count].cli_MACAddress,mac,(sizeof(unsigned char))*6);
+					printf("MAC %d = %X:%X:%X:%X:%X:%X \n", count, temp[count].cli_MACAddress[0],temp[count].cli_MACAddress[1], temp[count].cli_MACAddress[2], temp[count].cli_MACAddress[3], temp[count].cli_MACAddress[4], temp[count].cli_MACAddress[5]);
+				}
+				temp[count].cli_AuthenticationState = 1; //TODO
+                temp[count].cli_Active = 1; //TODO
+			}
+			pclose(fp);
+		}
+
+		sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep signal | tr -s ' ' | cut -d ' ' -f 2 > /tmp/wifi_signalstrength.txt", interface_name);
+		fp = popen(pipeCmd, "r");
+		if(fp)
+		{ 
+			pclose(fp);
+		}
+		fp = popen("cat /tmp/wifi_signalstrength.txt | tr -s ' ' | cut -f 2","r");
+		if(fp)
+		{
+			for(count =0 ; count < wifi_count ;count++)
+			{
+				fgets(str, MAX_BUF_SIZE, fp);
+				signalstrength = atoi(str);
+				temp[count].cli_SignalStrength = signalstrength;
+				temp[count].cli_RSSI = signalstrength;
+				temp[count].cli_SNR = signalstrength + 95;
+			}
+			pclose(fp);
+		}
+
+
+		if((apIndex == 0) || (apIndex == 4))
+		{
+			for(count =0 ; count < wifi_count ;count++)
+			{	
+				strcpy(temp[count].cli_OperatingStandard,"g");
+				strcpy(temp[count].cli_OperatingChannelBandwidth,"20MHz");
+			}
+
+			//BytesSent
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx bytes' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bytes_Send.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if(fp)
+			{ 
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Bytes_Send.txt | tr -s ' ' | cut -f 2","r");
+			if(fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_BytesSent = strtoul(str, NULL, 10);
+				}
+				pclose(fp);
+			}
+
+			//BytesReceived
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'rx bytes' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bytes_Received.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Bytes_Received.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_BytesReceived = strtoul(str, NULL, 10);
+				}
+				pclose(fp);
+			}
+
+			//PacketsSent
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx packets' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Packets_Send.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+
+			fp = popen("cat /tmp/Ass_Packets_Send.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_PacketsSent = strtoul(str, NULL, 10);
+				}
+				pclose(fp);
+			}
+
+			//PacketsReceived
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'rx packets' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Packets_Received.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Packets_Received.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_PacketsReceived = strtoul(str, NULL, 10);
+				}
+				pclose(fp);
+			}
+
+			//ErrorsSent
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx failed' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Tx_Failed.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Tx_Failed.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_ErrorsSent = strtoul(str, NULL, 10);
+				}
+				pclose(fp);
+			}
+
+			//ErrorsSent
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx failed' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Tx_Failed.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Tx_Failed.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_ErrorsSent = strtoul(str, NULL, 10);
+				}
+				pclose(fp);
+			}
+
+			//LastDataDownlinkRate
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx bitrate' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bitrate_Send.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Bitrate_Send.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_LastDataDownlinkRate = strtoul(str, NULL, 10);
+					temp[count].cli_LastDataDownlinkRate = (temp[count].cli_LastDataDownlinkRate * 1024); //Mbps -> Kbps
+				}
+				pclose(fp);
+			}
+
+			//LastDataUplinkRate
+			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'rx bitrate' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bitrate_Received.txt", interface_name);
+			fp = popen(pipeCmd, "r");
+			if (fp)
+			{
+				pclose(fp);
+			}
+			fp = popen("cat /tmp/Ass_Bitrate_Received.txt | tr -s ' ' | cut -f 2", "r");
+			if (fp)
+			{
+				for (count = 0; count < wifi_count; count++)
+				{
+					fgets(str, MAX_BUF_SIZE, fp);
+					temp[count].cli_LastDataUplinkRate = strtoul(str, NULL, 10);
+					temp[count].cli_LastDataUplinkRate = (temp[count].cli_LastDataUplinkRate * 1024); //Mbps -> Kbps
+				}
+				pclose(fp);
+			}
+
+		}
+		else if ((apIndex == 1) || (apIndex == 5))
+		{
+			for (count = 0; count < wifi_count; count++)
+			{
+				strcpy(temp[count].cli_OperatingStandard, "a");
+				strcpy(temp[count].cli_OperatingChannelBandwidth, "20MHz");
+				temp[count].cli_BytesSent = 0;
+				temp[count].cli_BytesReceived = 0;
+				temp[count].cli_LastDataUplinkRate = 0;
+				temp[count].cli_LastDataDownlinkRate = 0;
+				temp[count].cli_PacketsSent = 0;
+				temp[count].cli_PacketsReceived = 0;
+				temp[count].cli_ErrorsSent = 0;
+			}
+		}
+
+		for (count = 0; count < wifi_count; count++)
+		{
+			temp[count].cli_Retransmissions = 0;
+			temp[count].cli_DataFramesSentAck = 0;
+			temp[count].cli_DataFramesSentNoAck = 0;
+			temp[count].cli_MinRSSI = 0;
+			temp[count].cli_MaxRSSI = 0;
+			strncpy(temp[count].cli_InterferenceSources, "", 64);
+			memset(temp[count].cli_IPAddress, 0, 64);
+			temp[count].cli_RetransCount = 0;
+			temp[count].cli_FailedRetransCount = 0;
+			temp[count].cli_RetryCount = 0;
+			temp[count].cli_MultipleRetryCount = 0;
+		}
+		*associated_dev_array = temp;
+	}
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
+}
+
+int wifihal_interfacestatus(CHAR *wifi_status,CHAR *interface_name)
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	FILE *fp = NULL;
+	char path[512] = {0},status[MAX_BUF_SIZE] = {0};
+	char cmd[MAX_CMD_SIZE];
+	int count = 0;
+
+	sprintf(cmd, "ifconfig %s | grep RUNNING | tr -s ' ' | cut -d ' ' -f4", interface_name);
+	fp = popen(cmd,"r");
+	if(fp == NULL)
+	{
+		printf("Failed to run command in Function %s\n",__FUNCTION__);
+		return 0;
+	}
+	if(fgets(path, sizeof(path)-1, fp) != NULL)
+	{
+		for(count=0;path[count]!='\n';count++)
+			status[count]=path[count];
+		status[count]='\0';
+	}
+	strcpy(wifi_status,status);
+	pclose(fp);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
+}
+
 //To-do
 INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
 {
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-        FILE *f;
-        int read_flag=0, auth_temp=0, mac_temp=0,i=0;
-        char cmd[256], buf[2048];
-        char *param , *value, *line=NULL;
-        size_t len = 0;
-        ssize_t nread;
-        wifi_associated_dev_t *dev=NULL;
-        *associated_dev_array = NULL;
-        sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta | grep AUTHORIZED | wc -l" , apIndex);
-        _syscmd(cmd,buf,sizeof(buf));
-        *output_array_size = atoi(buf);
 
-        if (*output_array_size <= 0)
-                return RETURN_OK;
+	//Using different approach to get required WiFi Parameters from system available commands
+#if 0 
+	FILE *f;
+	int read_flag=0, auth_temp=0, mac_temp=0,i=0;
+	char cmd[256], buf[2048];
+	char *param , *value, *line=NULL;
+	size_t len = 0;
+	ssize_t nread;
+	wifi_associated_dev3_t *dev=NULL;
+	*associated_dev_array = NULL;
+	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta | grep AUTHORIZED | wc -l" , apIndex);
+	_syscmd(cmd,buf,sizeof(buf));
+	*output_array_size = atoi(buf);
 
-        dev=(wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
-        *associated_dev_array = dev;
-        sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta > /tmp/connected_devices.txt" , apIndex);
-        _syscmd(cmd,buf,sizeof(buf));
-        f = fopen("/tmp/connected_devices.txt", "r");
-        if (f==NULL)
-        {
-                *output_array_size=0;
-                return RETURN_ERR;
-        }
-        while ((nread = getline(&line, &len, f)) != -1)
-        {
-                param = strtok(line,"=");
-                value = strtok(NULL,"=");
+	if (*output_array_size <= 0)
+			return RETURN_OK;
 
-                if( strcmp("flags",param) == 0 )
-                {
-                        value[strlen(value)-1]='\0';
-                        if(strstr (value,"AUTHORIZED") != NULL )
-                        {
-                                dev[auth_temp].cli_AuthenticationState = 1;
-                                dev[auth_temp].cli_Active = 1;
-                                auth_temp++;
-                                read_flag=1;
-                        }
-                }
-                if(read_flag==1)
-                {
-                        if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
-                        {
-                                value[strlen(value)-1]='\0';
-                                sscanf(value, "%x:%x:%x:%x:%x:%x",
-				(unsigned int *)&dev[mac_temp].cli_MACAddress[0],
-                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[1],
-                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[2],
-                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[3],
-                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[4],
-                                                (unsigned int *)&dev[mac_temp].cli_MACAddress[5] );
-                                mac_temp++;
-                                read_flag=0;
-                        }
-                }
-        }
-        *output_array_size = auth_temp;
-        auth_temp=0;
-        mac_temp=0;
-        free(line);
-        fclose(f);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-        return RETURN_OK;
+	dev=(wifi_associated_dev3_t *) AnscAllocateMemory(*output_array_size * sizeof(wifi_associated_dev3_t));
+	*associated_dev_array = dev;
+	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta > /tmp/connected_devices.txt" , apIndex);
+	_syscmd(cmd,buf,sizeof(buf));
+	f = fopen("/tmp/connected_devices.txt", "r");
+	if (f==NULL)
+	{
+			*output_array_size=0;
+			return RETURN_ERR;
+	}
+	while ((nread = getline(&line, &len, f)) != -1)
+	{
+			param = strtok(line,"=");
+			value = strtok(NULL,"=");
+
+			if( strcmp("flags",param) == 0 )
+			{
+					value[strlen(value)-1]='\0';
+					if(strstr (value,"AUTHORIZED") != NULL )
+					{
+							dev[auth_temp].cli_AuthenticationState = 1;
+							dev[auth_temp].cli_Active = 1;
+							auth_temp++;
+							read_flag=1;
+					}
+			}
+			if(read_flag==1)
+			{
+					if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
+					{
+							value[strlen(value)-1]='\0';
+							sscanf(value, "%x:%x:%x:%x:%x:%x",
+											(unsigned int *)&dev[mac_temp].cli_MACAddress[0],
+											(unsigned int *)&dev[mac_temp].cli_MACAddress[1],
+											(unsigned int *)&dev[mac_temp].cli_MACAddress[2],
+											(unsigned int *)&dev[mac_temp].cli_MACAddress[3],
+											(unsigned int *)&dev[mac_temp].cli_MACAddress[4],
+											(unsigned int *)&dev[mac_temp].cli_MACAddress[5] );
+
+					}
+					else if( strcmp("rx_packets",param) == 0 )
+					{
+							sscanf(value, "%d", &(dev[mac_temp].cli_PacketsReceived));
+					}
+
+					else if( strcmp("tx_packets",param) == 0 )
+					{
+							sscanf(value, "%d", &(dev[mac_temp].cli_PacketsSent));						
+					}
+
+					else if( strcmp("rx_bytes",param) == 0 )
+					{
+							sscanf(value, "%d", &(dev[mac_temp].cli_BytesReceived));
+					}
+
+					else if( strcmp("tx_bytes",param) == 0 )
+					{
+							sscanf(value, "%d", &(dev[mac_temp].cli_BytesSent));		
+							mac_temp++;
+							read_flag=0;
+					}						
+			}
+	}
+
+	*output_array_size = auth_temp;
+	auth_temp=0;
+	mac_temp=0;
+	free(line);
+	fclose(f);
+#endif
+	char interface_name[MAX_BUF_SIZE] = {0};
+	char wifi_status[MAX_BUF_SIZE] = {0};
+	char hostapdconf[MAX_BUF_SIZE] = {0};
+
+	wifi_associated_dev3_t *dev_array = NULL;
+	ULONG wifi_count = 0;
+
+	*associated_dev_array = NULL;
+	*output_array_size = 0;
+
+	printf("wifi_getApAssociatedDeviceDiagnosticResult3 apIndex = %d \n", apIndex);
+	//if(apIndex == 0 || apIndex == 1 || apIndex == 4 || apIndex == 5) // These are availble in RPI.
+	{
+		sprintf(hostapdconf, "/nvram/hostapd%d.conf", apIndex);
+
+		GetInterfaceName(interface_name, hostapdconf);
+
+		if(strlen(interface_name) > 1)
+		{
+			wifihal_interfacestatus(wifi_status,interface_name);
+			if(strcmp(wifi_status,"RUNNING") == 0)
+			{
+				wifihal_AssociatedDevicesstats3(apIndex,interface_name,&dev_array,&wifi_count);
+
+				*associated_dev_array = dev_array;
+				*output_array_size = wifi_count;		
+			}
+			else
+			{
+				*associated_dev_array = NULL;
+			}
+		}
+	}
+
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
 }
 
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering object
