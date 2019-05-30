@@ -417,7 +417,7 @@ typedef struct _wifi_associated_dev3
         ULONG cli_BytesReceived;        //The total number of bytes received from the client device, including framing characters.
         INT   cli_RSSI; //The Received Signal Strength Indicator, RSSI, parameter is the energy observed at the antenna receiver for transmissions from the device averaged over past 100 packets recevied from the device.
         INT   cli_MinRSSI;      //The Minimum Received Signal Strength Indicator, RSSI, parameter is the minimum energy observed at the antenna receiver for past transmissions (100 packets).
-	INT   cli_MaxRSSI;      //The Maximum Received Signal Strength Indicator, RSSI, parameter is the energy observed at the antenna receiver for past transmissions (100 packets).
+	    INT   cli_MaxRSSI;      //The Maximum Received Signal Strength Indicator, RSSI, parameter is the energy observed at the antenna receiver for past transmissions (100 packets).
         UINT  cli_Disassociations;      //This parameter  represents the total number of client disassociations. Reset the parameter evey 24hrs or reboot
         UINT  cli_AuthenticationFailures;       //This parameter indicates the total number of authentication failures.  Reset the parameter evey 24hrs or reboot
 
@@ -430,6 +430,8 @@ typedef struct _wifi_associated_dev3
         ULONG cli_FailedRetransCount;  //The number of packets that were not transmitted successfully due to the number of retransmission attempts exceeding an 802.11 retry limit.
         ULONG cli_RetryCount;  //The number of packets that were successfully transmitted after one or more retransmissions
         ULONG cli_MultipleRetryCount; //The number of packets that were successfully transmitted after more than one retransmission.
+        UINT  cli_MaxDownlinkRate; //The Max data transmit rate in kbps for the access point to the associated device.
+        UINT  cli_MaxUplinkRate;   // The Max data transmit rate in kbps for the associated device to the access point.
 } wifi_associated_dev3_t;
 
 typedef struct _wifi_radius_setting_t
