@@ -83,6 +83,7 @@
 #define DEF_HOSTAPD_CONF_4 "/usr/ccsp/wifi/hostapd4.conf"
 #define DEF_HOSTAPD_CONF_5 "/usr/ccsp/wifi/hostapd5.conf"
 #define DEF_RADIO_PARAM_CONF "/usr/ccsp/wifi/radio_param_def.cfg"
+#define LM_DHCP_CLIENT_FORMAT   "%63d %17s %63s %63s"
 
 //For 5g Alias Interfaces
 static BOOL priv_flag = TRUE;
@@ -5464,6 +5465,12 @@ INT wifihal_AssociatedDevicesstats3(INT apIndex,CHAR *interface_name,wifi_associ
 
 		snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump > /tmp/AssociatedDevice_Stats.txt", interface_name);
 		system(pipeCmd);
+		memset(pipeCmd,0,sizeof(pipeCmd));
+		if(apIndex == 0)
+                	snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump | grep Station >> /tmp/AllAssociated_Devices_2G.txt", interface_name);
+		else if(apIndex == 1)
+	                snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump | grep Station >> /tmp/AllAssociated_Devices_5G.txt", interface_name);
+                system(pipeCmd);
 
 		fp = fopen("/tmp/AssociatedDevice_Stats.txt", "r");
 		if(fp == NULL)
@@ -5866,6 +5873,142 @@ INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev
 	return RETURN_OK;
 }
 
+/* getIPAddress function */
+/**
+* @description Returning IpAddress of the Matched String
+*
+* @param 
+* @str Having MacAddress
+* @ipaddr Having ipaddr 
+* @return The status of the operation
+* @retval RETURN_OK if successful
+* @retval RETURN_ERR if any error is detected
+*
+*/
+
+INT getIPAddress(char *str,char *ipaddr)
+{
+    FILE *fp = NULL;
+    char buf[1024] = {0},ipAddr[50] = {0},phyAddr[100] = {0},hostName[100] = {0};
+    int LeaseTime = 0,ret = 0;
+    if ( (fp=fopen("/nvram/dnsmasq.leases", "r")) == NULL )
+    {
+        return RETURN_ERR;
+    }
+
+    while ( fgets(buf, sizeof(buf), fp)!= NULL )
+    {
+        /*
+        Sample:sss
+        1560336751 00:cd:fe:f3:25:e6 10.0.0.153 NallamousiPhone 01:00:cd:fe:f3:25:e6
+        1560336751 12:34:56:78:9a:bc 10.0.0.154 NallamousiPhone 01:00:cd:fe:f3:25:e6
+        */
+        ret = sscanf(buf, LM_DHCP_CLIENT_FORMAT,
+                 &(LeaseTime),
+                 phyAddr,
+                 ipAddr,
+                 hostName
+              );
+        if(ret != 4)
+		continue;
+        if(strcmp(str,phyAddr) == 0)
+                strcpy(ipaddr,ipAddr);
+    }
+    return RETURN_OK;
+}
+
+/* wifi_getApInactiveAssociatedDeviceDiagnosticResult function */
+/**
+* @description Returning Inactive wireless connected clients informations
+*
+* @param 
+* @filename Holding private_wifi 2g/5g content files
+* @associated_dev_array  Having inactiv wireless clients informations
+* @output_array_size Returning Inactive wireless counts
+* @return The status of the operation
+* @retval RETURN_OK if successful
+* @retval RETURN_ERR if any error is detected
+*
+*/
+
+INT wifi_getApInactiveAssociatedDeviceDiagnosticResult(char *filename,wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	int count = 0,maccount = 0,i = 0,wificlientindex = 0;
+	FILE *fp = NULL;
+	int arr[MACADDRESS_SIZE] = {0};
+	unsigned char mac[MACADDRESS_SIZE] = {0};
+	char path[1024] = {0},str[1024] = {0},ipaddr[50] = {0},buf[512] = {0};
+	sprintf(buf,"cat %s | grep Station | sort | uniq | wc -l",filename);
+	fp = popen(buf,"r");
+	if(fp == NULL)
+		return RETURN_ERR;
+	else
+	{
+		fgets(path,sizeof(path),fp);
+		maccount = atoi(path);
+	}
+	pclose(fp);
+	*output_array_size = maccount;
+	wifi_associated_dev3_t* temp = NULL;
+	temp = (wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
+	*associated_dev_array = temp;
+	if(temp == NULL)
+	{
+		printf("Error Statement. Insufficient memory \n");
+		return RETURN_ERR;
+	}
+	memset(buf,0,sizeof(buf));
+	sprintf(buf,"cat %s | grep Station | cut -d ' ' -f2 | sort | uniq",filename);
+	fp = popen(buf,"r");
+	for(count = 0; count < maccount ; count++)
+	{
+		fgets(path,sizeof(path),fp);
+		for(i = 0; path[i]!='\n';i++)
+			str[i]=path[i];
+		str[i]='\0';
+		getIPAddress(str,ipaddr);
+		memset(buf,0,sizeof(buf));
+		if(strlen(ipaddr) > 0)
+		{
+			sprintf(buf,"ping -q -c 1 -W 1  \"%s\"  > /dev/null 2>&1",ipaddr);
+			if (WEXITSTATUS(system(buf)) != 0)  //InActive wireless clients info
+			{
+				if( MACADDRESS_SIZE == sscanf(str, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
+				{
+					for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
+					{
+						mac[wificlientindex] = (unsigned char) arr[wificlientindex];
+
+					}
+					memcpy(temp[count].cli_MACAddress,mac,(sizeof(unsigned char))*6);
+					fprintf(stderr,"%sMAC %d = %X:%X:%X:%X:%X:%X \n", __FUNCTION__,count, temp[count].cli_MACAddress[0],temp[count].cli_MACAddress[1], temp[count].cli_MACAddress[2], temp[count].cli_MACAddress[3], temp[count].cli_MACAddress[4], temp[count].cli_MACAddress[5]);
+				}
+				temp[count].cli_AuthenticationState = 0; //TODO
+				temp[count].cli_Active = 0; //TODO      
+				temp[count].cli_SignalStrength = 0;
+			}
+			else //Active wireless clients info
+			{
+				if( MACADDRESS_SIZE == sscanf(str, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
+				{
+					for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
+					{
+						mac[wificlientindex] = (unsigned char) arr[wificlientindex];
+
+					}
+					memcpy(temp[count].cli_MACAddress,mac,(sizeof(unsigned char))*6);
+					fprintf(stderr,"%sMAC %d = %X:%X:%X:%X:%X:%X \n", __FUNCTION__,count, temp[count].cli_MACAddress[0],temp[count].cli_MACAddress[1], temp[count].cli_MACAddress[2], temp[count].cli_MACAddress[3], temp[count].cli_MACAddress[4], temp[count].cli_MACAddress[5]);
+				}
+				temp[count].cli_Active = 1;
+			}
+		}
+		memset(ipaddr,0,sizeof(ipaddr));
+	}
+	pclose(fp);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
+}
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering object
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering.Capability bool r/o
 //To get Band Steering Capability
