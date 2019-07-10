@@ -383,7 +383,11 @@ CcspHalEthSwGetPortAdminStatus
  CcspHalEthSwTrace(("port id %d", PortId));
   int port_num = 0;
   FILE *fp;
-  char port[2];
+  char port_id[150];
+  char *val = "/1-1.";
+  char *val1 = "/1-1.1.";
+  char *p = NULL;
+
   char *path;
   path = (char *)malloc(20);
   path="/sys/class/net/eth1";
@@ -393,10 +397,26 @@ CcspHalEthSwGetPortAdminStatus
   if(eth_if==0)
   return  RETURN_ERR;
 
-  fp= popen("ls -la /sys/class/net/ | awk '/eth1/{portId=$11}   END {print substr(portId,54,1)}'","r");
-  fgets(port,sizeof(port),fp);
-  port_num = atoi (port);
-  port_num = port_num-1;
+  fp= popen("ls -la /sys/class/net/ | awk '/eth1/{portId=$11}   END {print portId}'","r");
+  fgets(port_id,sizeof(port_id),fp);
+  if (strstr(port_id,val1)){
+        p = strstr(port_id,val1);
+        p = strtok(p,".");
+        p = strtok(NULL,".");
+        p = strtok(NULL,"/");
+        port_num = atoi(p);
+        if (port_num == 2)
+                port_num = port_num + 2;
+        else
+                port_num = port_num;
+  }
+  else{
+        p = strstr(port_id,val);
+        p = strtok(p,".");
+        p = strtok(NULL,"/");
+        port_num = atoi(p);
+        port_num = port_num - 1;
+  }
 
    switch (PortId)
     {
@@ -453,8 +473,13 @@ CcspHalEthSwSetPortAdminStatus
     char cmd2[50];
     int port_num=0;
     FILE *fp = NULL;
-    char port[2];
-    char *interface = NULL;;
+
+    char port_id[150];
+    char *val = "/1-1.";
+    char *val1 = "/1-1.1.";
+    char *p = NULL;
+
+    char *interface = NULL;
     char *path = NULL;
     interface = (char *)malloc(5);
     path = (char *)malloc(20);
@@ -465,11 +490,28 @@ CcspHalEthSwSetPortAdminStatus
     if(eth_if == 0 )
         return  RETURN_ERR;
 
-    fp= popen("ls -la /sys/class/net/ | awk '/eth1/{portId=$11}   END {print substr(portId,54,1)}'","r");
-    fgets(port,sizeof(port),fp);
-    port_num = atoi (port) - 1;
-    strcpy(interface,"eth1");
+    fp= popen("ls -la /sys/class/net/ | awk '/eth1/{portId=$11}   END {print portId}'","r");
+    fgets(port_id,sizeof(port_id),fp);
+    if (strstr(port_id,val1)){
+        p = strstr(port_id,val1);
+        p = strtok(p,".");
+        p = strtok(NULL,".");
+        p = strtok(NULL,"/");
+        port_num = atoi(p);
+        if (port_num == 2)
+                port_num = port_num + 2;
+        else
+                port_num = port_num;
+    }
+    else{
+        p = strstr(port_id,val);
+        p = strtok(p,".");
+        p = strtok(NULL,"/");
+        port_num = atoi(p);
+        port_num = port_num - 1;
+    }
 
+    strcpy(interface,"eth1");
 
     sprintf(cmd1,"ip link set %s up",interface);
     sprintf(cmd2,"ip link set %s down",interface);
