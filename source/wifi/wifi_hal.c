@@ -3910,7 +3910,7 @@ INT wifi_setApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 	memset(&list,0,sizeof(list));
 	wifi_dbg_printf("\n%s AuthMode=%s",__func__,authMode);
 	strncpy(params.name,"wpa_key_mgmt",strlen("wpa_key_mgmt"));
-	if(strcmp(authMode,"PSKAuthentication") == 0)
+	if((strcmp(authMode,"PSKAuthentication") == 0) || (strcmp(authMode,"SharedAuthentication") == 0))
 		strcpy(params.value,"WPA-PSK");
 	else if(strcmp(authMode,"EAPAuthentication") == 0)
 		strcpy(params.value,"WPA-EAP");
@@ -4842,16 +4842,84 @@ INT wifi_getApSecurityModesSupported(INT apIndex, CHAR *output)
 //The value MUST be a member of the list reported by the ModesSupported parameter. Indicates which security mode is enabled.
 INT wifi_getApSecurityModeEnabled(INT apIndex, CHAR *output)
 {
-	if(!output)
-		return RETURN_ERR;
-	snprintf(output, 128, "WPA-WPA2-Personal");
-	return RETURN_OK;
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+        char securityType[32];
+        char authMode[32];
+
+        if(!output)
+                return RETURN_ERR;
+
+        wifi_getApBeaconType(apIndex, securityType);
+        wifi_getApBasicAuthenticationMode(apIndex, authMode);
+
+        if (strncmp(securityType,"None", strlen("None")) == 0) {
+                strcpy(output,"None");
+        } else if (strncmp(securityType,"WPAand11i", strlen("WPAand11i")) == 0) {
+                if(strncmp(authMode,"EAPAuthentication", strlen("EAPAuthentication")) == 0) {
+                        snprintf(output, 128, "WPA-WPA2-Enterprise");
+                } else {
+                        snprintf(output, 128, "WPA-WPA2-Personal");
+                }
+        } else if (strncmp(securityType,"WPA", strlen("WPA")) == 0) {
+                if(strncmp(authMode,"EAPAuthentication", strlen("EAPAuthentication")) == 0) {
+                        snprintf(output, 128, "WPA-Enterprise");
+                } else {
+                        snprintf(output, 128, "WPA-Personal");
+                }
+        } else if (strncmp(securityType,"11i", strlen("11i")) == 0) {
+                if(strncmp(authMode,"EAPAuthentication", strlen("EAPAuthentication")) == 0) {
+                        snprintf(output, 128, "WPA2-Enterprise");
+                } else {
+                        snprintf(output, 128, "WPA2-Personal");
+                }
+        } else {
+                strcpy(output,"None");
+        }
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+        return RETURN_OK;
 }
   
 INT wifi_setApSecurityModeEnabled(INT apIndex, CHAR *encMode)
 {
 	//store settings and wait for wifi up to apply
-	return RETURN_ERR;
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+        char securityType[32];
+        char authMode[32];
+
+        if(!encMode)
+                return RETURN_ERR;
+
+        printf("%s: apIndex %d, encMode %s\n",__func__, apIndex, encMode);
+
+        if (strcmp(encMode, "None")==0) {
+                strcpy(securityType,"None");
+                strcpy(authMode,"None");
+        } else if (strcmp(encMode, "WPA-WPA2-Personal")==0) {
+                strcpy(securityType,"WPAand11i");
+                strcpy(authMode,"PSKAuthentication");
+        } else if (strcmp(encMode, "WPA-WPA2-Enterprise")==0) {
+                strcpy(securityType,"WPAand11i");
+                strcpy(authMode,"EAPAuthentication");
+        } else if (strcmp(encMode, "WPA-Personal")==0) {
+                strcpy(securityType,"WPA");
+                strcpy(authMode,"PSKAuthentication");
+        } else if (strcmp(encMode, "WPA-Enterprise")==0) {
+                strcpy(securityType,"WPA");
+                strcpy(authMode,"EAPAuthentication");
+        } else if (strcmp(encMode, "WPA2-Personal")==0) {
+                strcpy(securityType,"11i");
+                strcpy(authMode,"PSKAuthentication");
+        } else if (strcmp(encMode, "WPA2-Enterprise")==0) {
+                strcpy(securityType,"11i");
+                strcpy(authMode,"EAPAuthentication");
+        } else {
+                strcpy(securityType,"None");
+                strcpy(authMode,"None");
+        }
+        wifi_setApBeaconType(apIndex, securityType);
+        wifi_setApBasicAuthenticationMode(apIndex, authMode);
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+        return RETURN_OK;
 }   
 
 
