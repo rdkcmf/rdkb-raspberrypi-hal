@@ -6530,7 +6530,10 @@ INT wifi_setRadioDcsScanning(INT radioIndex, BOOL enable)
 {
 	return RETURN_OK;
 }
-
+INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
+{
+        return RETURN_OK;
+}
 wifi_apAuthEvent_callback apAuthEvent_cb = NULL;
 
 void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
