@@ -77,6 +77,29 @@ static int execute(char *command, char *result)
     return RETURN_OK;
 }
 
+static int execute_cmd(char *command, char *result)
+{
+	FILE *fp = NULL;
+	char buf[MAX_BUFFER_SIZE] = {0}, copy_buf[MAX_BUFFER_SIZE] ={0};
+	int count = 0;
+
+	fp = popen(command,"r");
+	if(fp == NULL)
+	{
+		return RETURN_ERR;
+	}
+
+	if(fgets(buf,sizeof(buf) -1,fp) != NULL)
+	{
+		for(count=0;buf[count]!='\n';count++)
+			copy_buf[count]=buf[count];
+		copy_buf[count]='\0';
+	}
+	strcpy(result,copy_buf);
+	pclose(fp);
+	return RETURN_OK;
+}
+
 /* Note that 0 == RETURN_OK == STATUS_OK    */
 /* Note that -1 == RETURN_ERR == STATUS_NOK */
 
@@ -250,7 +273,11 @@ INT platform_hal_GetFirmwareName(CHAR* pValue, ULONG maxSize)
 }
 
 
-INT platform_hal_GetBaseMacAddress(CHAR *pValue) { strcpy(pValue, "BasMac"); return RETURN_OK; }
+INT platform_hal_GetBaseMacAddress(CHAR *pValue) 
+{ 
+	execute_cmd("ifconfig erouter0 | grep HWaddr | cut -d ' ' -f7",pValue);	
+	return RETURN_OK;
+}
 INT platform_hal_GetHardware(CHAR *pValue)
 {
     int ret = RETURN_ERR;
