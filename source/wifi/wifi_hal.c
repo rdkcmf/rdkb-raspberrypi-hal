@@ -4223,6 +4223,43 @@ INT wifi_kickApAclAssociatedDevices(INT apIndex, BOOL enable)
     return RETURN_OK;
 }
 
+INT wifi_setPreferPrivateConnection(BOOL enable)
+{
+	fprintf(stderr,"%s Value of %d",__FUNCTION__,enable);
+	char interface_name[100] = {0},ssid_cur_value[50] = {0};
+	char buf[1024] = {0};
+	if(enable == TRUE)
+	{
+		GetInterfaceName(interface_name,"/nvram/hostapd4.conf");	
+		sprintf(buf,"ifconfig %s down" ,interface_name);
+		system(buf);
+		memset(buf,0,sizeof(buf));
+		GetInterfaceName(interface_name,"/nvram/hostapd5.conf");	
+		sprintf(buf,"ifconfig %s down" ,interface_name);
+		system(buf);
+	}
+	else
+	{
+		File_Reading("cat /tmp/Get5gssidEnable.txt",&ssid_cur_value);
+		if(strcmp(ssid_cur_value,"1") == 0)
+		{
+			wifi_RestartHostapd_5G(1);
+			restarthostapd_all("/nvram/hostapd1.conf");
+		}
+		memset(ssid_cur_value,0,sizeof(ssid_cur_value));
+		File_Reading("cat /tmp/GetPub2gssidEnable.txt",&ssid_cur_value);
+		if(strcmp(ssid_cur_value,"1") == 0)
+		{
+			wifi_RestartHostapd_2G();
+			restarthostapd_all("/nvram/hostapd4.conf");
+		}
+		memset(ssid_cur_value,0,sizeof(ssid_cur_value));
+		File_Reading("cat /tmp/GetPub5gssidEnable.txt",&ssid_cur_value);
+		if(strcmp(ssid_cur_value,"1") == 0)
+			restarthostapd_all("/nvram/hostapd5.conf");
+	}
+	return RETURN_OK;
+}
 // sets the mac address filter control mode.  0 == filter disabled, 1 == filter as whitelist, 2 == filter as blacklist
 INT wifi_setApMacAddressControlMode(INT apIndex, INT filterMode)
 {
@@ -4391,6 +4428,7 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 		char buf[MAX_BUF_SIZE]={'\0'};
 		char cmd[MAX_CMD_SIZE]={'\0'};
 		char xfinity_wifi[MAX_CMD_SIZE]={'\0'};
+		char PreferPrivateConnection[MAX_CMD_SIZE]={'\0'};
 		int count = 0;
 		FILE *fp = NULL;
 		//For Getting Radio Status
@@ -4405,6 +4443,13 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 		for(count=0;buf[count]!='\n';count++)
 			xfinity_wifi[count] = buf[count];
 		xfinity_wifi[count] = '\0';
+//Getting the  PreferPrivateCOnnection value from PSM DB
+		memset(buf,0,sizeof(buf));
+		_syscmd("dmcli eRT psmgetv eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.PreferPrivate | grep value | cut -f3 -d : | cut -f2 -d' '",buf,sizeof(buf));
+		for(count=0;buf[count]!='\n';count++)
+                        PreferPrivateConnection[count] = buf[count];
+                PreferPrivateConnection[count] = '\0';
+
 		sprintf(HConf_file,"%s%d%s","/nvram/hostapd",apIndex,".conf");
 		GetInterfaceName(IfName,HConf_file);
 		if(enable == FALSE)
@@ -4456,7 +4501,6 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 			{
 				if((apIndex == 4) || (apIndex == 5))
 				{
-					system(cmd);
 					if(apIndex == 5) //For Alias interface of 5G
 					{
 						File_Reading("cat /tmp/Get5gssidEnable.txt",&ssid_cur_value);
@@ -4473,6 +4517,7 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 							}
 						}
 					}
+					system(cmd);
 				}
 
 			}//for xfinity_wifi feature is up then only ssid's 4/5 shoud be allowed for resetting operations else it won't allowed
@@ -4501,6 +4546,19 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 			sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub5gssidEnable.txt");
 		}
 		system(command);
+	//PreferPrivateConnection check
+		if (strcmp(PreferPrivateConnection,"1") == 0)
+		{
+			sleep(3);
+			GetInterfaceName(IfName,"/nvram/hostapd4.conf");
+			memset(buf,0,sizeof(buf));
+			sprintf(buf,"ifconfig %s down",IfName);
+			system(buf);
+			GetInterfaceName(IfName,"/nvram/hostapd5.conf");
+			memset(buf,0,sizeof(buf));
+			sprintf(buf,"ifconfig %s down",IfName);
+			system(buf);
+		}
 	}
 	return RETURN_OK;
 }
