@@ -492,3 +492,19 @@ INT platform_hal_SetFanSpeed(ULONG SpeeddInRpms) {
 	//set the fan speed
 	return RETURN_OK; 
 }
+
+/* platform_hal_SetSNMPOnboardRebootEnable() function */
+/**
+* @description : Set SNMP Onboard Reboot Enable value
+*                to allow or ignore SNMP reboot
+* @param IN    : pValue - SNMP Onboard Reboot Enable value
+                 ("disable" or "enable")
+*
+* @return      : The status of the operation
+* @retval      : RETURN_OK if successful
+* @retval      : RETURN_ERR if any error is detected
+*/
+INT platform_hal_SetSNMPOnboardRebootEnable(CHAR* pValue)
+{
+	return RETURN_OK;
+}
