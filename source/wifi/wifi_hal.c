@@ -7011,6 +7011,18 @@ INT wifi_setRadioDcsScanning(INT radioIndex, BOOL enable)
 {
 	return RETURN_OK;
 }
+INT wifi_setRadioStatsEnable(INT radioIndex, BOOL enable)
+{
+	return RETURN_OK;
+}
+INT wifi_getRadioBandUtilization (INT radioIndex, INT *output_percentage)
+{
+	return RETURN_OK;
+}
+INT wifi_getApAssociatedClientDiagnosticResult(INT apIndex, char *mac_addr, wifi_associated_dev3_t *dev_conn)
+{
+	return RETURN_OK;
+}
 INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
 {
         return RETURN_OK;
