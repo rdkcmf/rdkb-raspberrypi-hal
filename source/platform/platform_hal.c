@@ -44,6 +44,7 @@
 #define MAX_BUFFER_SIZE     1024
 #define TMP_BUFFER_SIZE     128
 #define ONE_KILOBYTE        1024
+#define FACTORY_RESET_COUNT_FILE "/nvram/.factory_reset_count"
 
 static int execute(char *command, char *result)
 {
@@ -432,12 +433,25 @@ INT platform_hal_GetUsedMemorySize(ULONG *pulSize)
 
 INT platform_hal_GetFactoryResetCount(ULONG *pulSize)
 {
+
     if(NULL == pulSize)
     {
         return RETURN_ERR;
     }
+    FILE *pdbFile = NULL;
+    char buf[128]={0};
+    pdbFile = fopen(FACTORY_RESET_COUNT_FILE, "r");
+    if(pdbFile != NULL)
+    {
+	 fread(buf,sizeof(buf),1,pdbFile);
+	 fclose(pdbFile); 
+	 *pulSize = atoi(buf);
+    }
+    else
+    {
+         *pulSize = 0;
+    }
 
-    *pulSize = 2;
 
     return RETURN_OK;
 }
