@@ -2744,6 +2744,19 @@ INT wifi_getBandSteeringLog(INT record_index, ULONG *pSteeringTime, CHAR *pClien
 * calls. It should probably just send a message to a driver event handler task.
 *
 */
+
+INT wifi_getBandSteeringApGroup(char *output_ApGroup);
+INT wifi_getBandSteeringOverloadInactiveTime (INT radioIndex, INT *overloadInactiveTime);
+INT wifi_getBandSteeringIdleInactiveTime (INT radioIndex, INT *idleInactiveTime);
+INT wifi_setBandSteeringApGroup(char *ApGroup);
+INT wifi_setBandSteeringOverloadInactiveTime (INT radioIndex, INT overloadInactiveTime);
+INT wifi_setBandSteeringIdleInactiveTime (INT radioIndex, INT idleInactiveTime);
+INT wifi_getBandSteeringOverloadInactiveTime (INT radioIndex, INT *overloadInactiveTime);
+INT wifi_setBandSteeringSSIDSecurityParams ();
+INT wifi_checkSSIDSecurityParams ();
+INT wifi_resetBandSteeringSSIDSecurityParams ();
+
+
 INT wifi_factoryResetAP(int apIndex); 	//Restore AP paramters to default without change other AP nor Radio parameters (No need to reboot wifi)
 
 /* wifi_setRadioCtsProtectionEnable() function */

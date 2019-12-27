@@ -1751,6 +1751,7 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
 			strcpy(output_string,"2.4GHz");
 		else if(strstr(buf,"5.") != NULL )
 			strcpy(output_string,"5GHz");
+		else return RETURN_ERR; 	
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 	
@@ -2405,6 +2406,15 @@ INT wifi_factoryResetAP(int apIndex)
 //To set Band Steering AP group
 //To-do
 INT wifi_setBandSteeringApGroup(char *ApGroup) {
+	return RETURN_OK;
+}
+    
+INT wifi_getBandSteeringApGroup(char *output_ApGroup) {
+	return RETURN_OK;
+}
+
+INT wifi_getBandSteeringInactiveTime (INT *inactTimeout, BOOL isIdle)
+{
 	return RETURN_OK;
 }
 
@@ -3339,6 +3349,26 @@ INT wifi_getSSIDStatus(INT ssidIndex, CHAR *output_string) //Tr181
     return RETURN_OK;
 }
 #endif
+
+INT wifi_getApWpaSecurityMode  (INT apIndex, CHAR *output_string)
+{
+    struct params params;
+
+    if (output_string == NULL)
+    {    
+        return RETURN_ERR;
+    }    
+    memset (&params, 0, sizeof(struct params));
+    memset (&params, 0, sizeof(struct params));
+    strncpy (params.name, "wpa", strlen("wpa"));
+    wifi_hostapdRead(apIndex, &params, output_string);
+    if (strlen(output_string) > 0)   
+    {    
+        return RETURN_OK;
+    }    
+   return RETURN_ERR;
+}
+
 // Outputs a 32 byte or less string indicating the SSID name.  Sring buffer must be preallocated by the caller.
 INT wifi_getSSIDName(INT apIndex, CHAR *output)
 {
@@ -6561,21 +6591,101 @@ INT wifi_getApInactiveAssociatedDeviceDiagnosticResult(char *filename,wifi_assoc
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering.Capability bool r/o
 //To get Band Steering Capability
 INT wifi_getBandSteeringCapability(BOOL *support) {
-	*support=FALSE;
+	int index2G = 0;
+	int index5G = 1;
+	char bs_band0[8]={'\0'};
+	char bs_band1[8]={'\0'};
+
+	if (support == NULL)
+	{
+		return RETURN_ERR;
+	}
+	if ((wifi_getRadioSupportedFrequencyBands (index2G, bs_band0) == RETURN_ERR) 
+			|| (wifi_getRadioSupportedFrequencyBands (index5G, bs_band1) == RETURN_ERR))
+	{
+		WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d No dual-band support in device\n",__func__, __LINE__);
+		*support=FALSE;
+		return RETURN_OK;
+	}
+	if (strcmp (bs_band0, bs_band1) == 0)
+	{
+		// Both the band operate on same frequency
+		WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d Both the bands operate in same freq\n",__func__, __LINE__);
+		*support=FALSE;
+		return RETURN_OK;
+	}
+	*support=TRUE;
 	return RETURN_OK;
 }
 
 
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering.Enable bool r/w
 //To get Band Steering enable status
-INT wifi_getBandSteeringEnable(BOOL *enable) {
-	*enable=FALSE;
+INT wifi_getBandSteeringEnable(BOOL *enable) 
+{
+	int status = 0;
+	char output[8] = {0};
+
+	if (enable == NULL)
+	{
+		return RETURN_ERR;
+	}
+
+	syscfg_get (NULL, "band_steering_enable", output, sizeof(output));
+	status = atoi(output);
+	if (status == 1)
+		*enable = TRUE;
+	else
+		*enable = FALSE;
 	return RETURN_OK;
 }
 
 //To turn on/off Band steering
-INT wifi_setBandSteeringEnable(BOOL enable) {
-	
+INT wifi_setBandSteeringEnable(BOOL enable) 
+{
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	BOOL bscapability = FALSE;
+	int count =0;
+	char buf[1024]={'\0'};
+	char cli_output[1024]={'\0'};
+	struct params params;
+
+	memset (&params, 0, sizeof(struct params));
+	if ((enable != TRUE) && (enable != FALSE))
+	{
+		return RETURN_ERR;	
+	}
+
+	// Change in Band Steering Status
+	if (enable == ENABLE)
+	{
+		// Enable Band Steering
+		// Check Dual Band Support in the Device
+		if ((wifi_getBandSteeringCapability(&bscapability) != RETURN_OK) 
+			|| (bscapability == FALSE))
+		{
+			return RETURN_ERR;	
+		}
+
+		// Set same security parameters for SSID2
+		// Dynamic update to hostapd
+		wifi_setBandSteeringSSIDSecurityParams();
+		if (wifi_checkSSIDSecurityParams() == RETURN_ERR)
+		{
+			wifi_resetBandSteeringSSIDSecurityParams();
+			return RETURN_ERR;	
+		}
+		system("syscfg set band_steering_enable 1");
+		system("syscfg commit");
+		return RETURN_OK;
+	}
+
+	// Disable Band Steering
+	// Dynamic update to hostapd
+	wifi_resetBandSteeringSSIDSecurityParams();
+	system("syscfg set band_steering_enable 0");
+	system("syscfg commit");
+
 	return RETURN_OK;
 }
 
@@ -6614,6 +6724,23 @@ INT wifi_getBandSteeringPhyRateThreshold (INT radioIndex, INT *pPrThreshold) { /
 
 INT wifi_setBandSteeringPhyRateThreshold (INT radioIndex, INT prThreshold) { //If chip is not support, return -1
 	
+	return RETURN_ERR;
+}
+
+
+INT wifi_getBandSteeringOverloadInactiveTime (INT radioIndex, INT *overloadInactiveTime) {
+	return RETURN_ERR;
+}
+
+INT wifi_setBandSteeringOverloadInactiveTime (INT radioIndex, INT overloadInactiveTime) {
+	return RETURN_ERR;
+}
+
+INT wifi_getBandSteeringIdleInactiveTime (INT radioIndex, INT *idleInactiveTime) {
+	return RETURN_ERR;
+}
+
+INT wifi_setBandSteeringIdleInactiveTime (INT radioIndex, INT idleInactiveTime) {
 	return RETURN_ERR;
 }
 
@@ -7019,6 +7146,165 @@ INT wifi_getRadioBandUtilization (INT radioIndex, INT *output_percentage)
 {
 	return RETURN_OK;
 }
+
+/*
+ * Applies security parameters of 2.4GHz to 5GHz 
+ */
+INT wifi_setBandSteeringSSIDSecurityParams ()
+{
+	int ret = 0;
+	int index2G = 0;
+	int index5G = 1;
+	int wpacode = 0;
+	char output[128] = {0};
+	char if_name5G[10] = {0};
+
+	// backup the hostapd1.conf file 
+	system ("cp /nvram/hostapd1.conf /nvram/hostapd1.conf_bck");
+
+	// set same SSID for both the Bands
+	if ((wifi_getSSIDName(index2G, output) == RETURN_ERR) ||
+			(wifi_setSSIDName (index5G, output) == RETURN_ERR))
+	{
+		return RETURN_ERR;
+	}
+
+	// set same wpa for both the Bands
+	memset (&output, 0, sizeof(output));
+	if (wifi_getApWpaSecurityMode (index2G, output) == RETURN_ERR)
+	{
+		return RETURN_ERR;
+	}
+	wpacode = atoi(output);
+	if (wpacode == 1)
+	{	
+		ret = wifi_setApSecurityModeEnabled (index5G, "WPA-Personal");
+	}
+	else if (wpacode == 2)
+	{
+		ret = wifi_setApSecurityModeEnabled (index5G, "WPA2-Personal");
+	}
+	else if (wpacode == 3)
+	{
+		ret = wifi_setApSecurityModeEnabled (index5G, "WPA-WPA2-Personal");
+	}
+	else
+	{
+		ret = wifi_setApSecurityModeEnabled (index5G, "None");
+	}
+	if (ret == RETURN_ERR)
+		return ret;
+
+	// set same wpa_passphrase for both the Bands
+	memset(output, 0, sizeof(output));
+	if ((wifi_getApSecurityPreSharedKey(index2G, &output) == RETURN_ERR)
+		|| wifi_setApSecurityKeyPassphrase (index5G, output) == RETURN_ERR)
+	{
+		return RETURN_ERR;
+	}
+
+	return RETURN_OK;
+}
+
+INT wifi_resetBandSteeringSSIDSecurityParams ()
+{	
+	int index5G = 1;
+	int wpacode = 0;
+	int ret = 0;
+	char output[128] = {0};
+	char if_name5G[10] = {0};
+
+	system ("mv /nvram/hostapd1.conf_bck /nvram/hostapd1.conf");
+
+	// set SSID for 5GHz
+	if ((wifi_getSSIDName(index5G, output) == RETURN_ERR) || 
+		(wifi_setSSIDName (index5G, output) == RETURN_ERR))
+	{
+		return RETURN_ERR;
+	}
+
+	// set Encryption settings for 5GHz
+	memset (&output, 0, sizeof(output));
+	if (wifi_getApWpaSecurityMode (index5G, output) == RETURN_ERR)
+	{
+		return RETURN_ERR;
+	}
+	wpacode = atoi(output);
+	if (wpacode == 1)
+	{	
+		ret = wifi_setApSecurityModeEnabled (index5G, "WPA-Personal");
+	}
+	else if (wpacode == 2)
+	{
+		ret = wifi_setApSecurityModeEnabled (index5G, "WPA2-Personal");
+	}
+	else if (wpacode == 3)
+	{
+		ret = wifi_setApSecurityModeEnabled (index5G, "WPA-WPA2-Personal");
+	}
+	else
+	{
+		ret = wifi_setApSecurityModeEnabled (index5G, "None");
+	}
+	if (ret == RETURN_ERR)
+		return ret;
+
+	// set same wpa_passphrase for both the Bands
+	memset(output, 0, sizeof(output));
+	if ((wifi_getApSecurityPreSharedKey(index5G, &output) == RETURN_ERR) ||
+	(wifi_setApSecurityPreSharedKey(index5G, output) == RETURN_ERR))
+	{
+		return RETURN_ERR;
+	}
+	return RETURN_OK;
+}
+
+INT wifi_checkSSIDSecurityParams ()
+{
+	int index2G = 0;
+	int index5G = 1;
+	char output2G[128] = {0};
+	char output5G[128] = {0};
+
+	// compare SSIDs
+	if ((wifi_getSSIDName(index2G, output2G) == RETURN_ERR) || 
+		(wifi_getSSIDName (index5G, output5G) == RETURN_ERR))
+	{
+		return RETURN_ERR;
+	}
+	if (strcmp (output2G, output5G) != 0 )
+	{
+		return RETURN_ERR;
+	}
+
+	// compare passphrase
+	memset (&output2G, 0, sizeof(output2G));
+	memset (&output5G, 0, sizeof(output5G));
+	if ((wifi_getApSecurityPreSharedKey(index2G, output2G) == RETURN_ERR) ||
+	(wifi_getApSecurityPreSharedKey(index5G, output5G) == RETURN_ERR))
+	{
+		return RETURN_ERR;
+	}
+	if (strcmp (output2G, output5G) != 0 )
+	{
+		return RETURN_ERR;
+	}
+
+	// compare security mode
+	memset (&output2G, 0, sizeof(output2G));
+	memset (&output5G, 0, sizeof(output5G));
+	if ((wifi_getApWpaSecurityMode (index2G, output2G) == RETURN_ERR)
+		|| (wifi_getApWpaSecurityMode (index5G, output5G) == RETURN_ERR))
+	{
+		return RETURN_ERR;
+	}
+	if (strcmp (output2G, output5G) != 0 )
+	{
+		return RETURN_ERR;
+	}
+	return RETURN_OK;
+}
+
 INT wifi_getApAssociatedClientDiagnosticResult(INT apIndex, char *mac_addr, wifi_associated_dev3_t *dev_conn)
 {
 	return RETURN_OK;
