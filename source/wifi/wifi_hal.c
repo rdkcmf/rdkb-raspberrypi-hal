@@ -6625,13 +6625,14 @@ INT wifi_getBandSteeringEnable(BOOL *enable)
 {
 	int status = 0;
 	char output[8] = {0};
+        char buf[253]={'\0'};
 
 	if (enable == NULL)
 	{
 		return RETURN_ERR;
 	}
-
-	syscfg_get (NULL, "band_steering_enable", output, sizeof(output));
+	sprintf(buf,"syscfg get band_steering_enable");
+	_syscmd(buf,output,sizeof(output));
 	status = atoi(output);
 	if (status == 1)
 		*enable = TRUE;
