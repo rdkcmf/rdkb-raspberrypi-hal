@@ -6623,6 +6623,7 @@ INT wifi_getBandSteeringCapability(BOOL *support) {
 //To get Band Steering enable status
 INT wifi_getBandSteeringEnable(BOOL *enable) 
 {
+	BOOL bscapability = FALSE;
 	int status = 0;
 	char output[8] = {0};
         char buf[253]={'\0'};
@@ -6631,13 +6632,22 @@ INT wifi_getBandSteeringEnable(BOOL *enable)
 	{
 		return RETURN_ERR;
 	}
-	sprintf(buf,"syscfg get band_steering_enable");
-	_syscmd(buf,output,sizeof(output));
-	status = atoi(output);
-	if (status == 1)
-		*enable = TRUE;
-	else
+	if ((wifi_getBandSteeringCapability(&bscapability) != RETURN_OK) || (bscapability == FALSE))
+	{
 		*enable = FALSE;
+		system("syscfg set band_steering_enable 0");
+        	system("syscfg commit");
+	}
+	else
+	{
+		sprintf(buf,"syscfg get band_steering_enable");
+		_syscmd(buf,output,sizeof(output));
+		status = atoi(output);
+		if (status == 1)
+			*enable = TRUE;
+		else
+			*enable = FALSE;
+	}
 	return RETURN_OK;
 }
 
@@ -7294,8 +7304,8 @@ INT wifi_checkSSIDSecurityParams ()
 	// compare security mode
 	memset (&output2G, 0, sizeof(output2G));
 	memset (&output5G, 0, sizeof(output5G));
-	if ((wifi_getApWpaSecurityMode (index2G, output2G) == RETURN_ERR)
-		|| (wifi_getApWpaSecurityMode (index5G, output5G) == RETURN_ERR))
+	if ((wifi_getApSecurityModeEnabled (index2G, output2G) == RETURN_ERR)
+		|| (wifi_getApSecurityModeEnabled (index5G, output5G) == RETURN_ERR))
 	{
 		return RETURN_ERR;
 	}
