@@ -434,6 +434,12 @@ typedef struct _wifi_associated_dev3
         UINT  cli_MaxUplinkRate;   // The Max data transmit rate in kbps for the associated device to the access point.
 } wifi_associated_dev3_t;
 
+typedef struct _bs_AssDevices
+{
+	UCHAR bs_mac0[6];
+	UCHAR bs_mac1[6];
+} bs_AssDevices_t;
+
 typedef struct _wifi_radius_setting_t
 {
 	 INT  RadiusServerRetries; 			//Number of retries for Radius requests.
