@@ -6716,15 +6716,147 @@ INT wifi_setBandSteeringBandUtilizationThreshold (INT radioIndex, INT buThreshol
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering.BandSetting.{i}.RSSIThreshold int r/w
 //to set and read the band steering RSSIThreshold parameters 
 INT wifi_getBandSteeringRSSIThreshold (INT radioIndex, INT *pRssiThreshold){
-	
-	return RETURN_ERR;
+	char count[256] = {0};
+	char buf[512] = {0};
+
+	if (NULL == pRssiThreshold)
+		return RETURN_ERR;
+
+	sprintf(buf,"syscfg get RssiThreshold%d",radioIndex);
+       	_syscmd(buf,count,sizeof(count));	
+
+	*pRssiThreshold = atoi(count);
+
+	return RETURN_OK;
 }
 
 INT wifi_setBandSteeringRSSIThreshold (INT radioIndex, INT rssiThreshold){
-	
-	return RETURN_ERR;
+
+	char buf[512] = {0};
+	sprintf(buf,"syscfg set RssiThreshold%d %d",radioIndex,rssiThreshold);
+	system(buf);
+	system("syscfg commit");
+
+	return RETURN_OK;
 }
 
+INT wifi_macRecord(char *interface_name, INT radioIndex, char *freqBand, bs_AssDevices_t **bs_arr, UINT *array_count){
+
+	char buf[MAX_BUF_SIZE]={'\0'};
+	char cmd[MAX_CMD_SIZE]={'\0'},tmp_buf[MAX_CMD_SIZE]={'\0'},path[MAX_CMD_SIZE] = {0};
+	FILE *fp;
+	int mac_count = 0,count = 0,i = 0,wificlientindex = 0;
+	unsigned char mac[MACADDRESS_SIZE] = {0};
+	int arr[MACADDRESS_SIZE] = {0};
+
+	snprintf(cmd, sizeof(cmd), "iw dev %s station dump | grep Station | cut -d ' ' -f2 | sort | uniq > /tmp/wifi_%s.txt", interface_name,interface_name);
+	system(cmd);
+	sprintf(cmd, "cat /tmp/wifi_%s.txt | wc -l",interface_name);
+        _syscmd(cmd,buf,sizeof(buf));
+	if(buf == NULL)
+                return RETURN_ERR;
+
+        if(atoi(buf) != 0){
+		mac_count = atoi(buf);
+		*array_count=mac_count;
+		bs_AssDevices_t* bs_t = NULL;
+		*bs_arr = NULL;
+	        bs_t = (bs_AssDevices_t *) calloc (*array_count, sizeof(bs_AssDevices_t));
+		*bs_arr = bs_t;
+
+		if(bs_t == NULL)
+        	{
+                	printf("Error Statement. Insufficient memory \n");
+                	return RETURN_ERR;
+        	}
+        	memset(buf,0,sizeof(buf));
+
+        	sprintf(buf,"cat /tmp/wifi_%s.txt",interface_name);
+        	fp = popen(buf,"r");
+        	for(count = 0; count < mac_count ; count++)
+        	{
+                	fgets(path,sizeof(path),fp);
+			for(i=0;path[i]!='\n';i++)
+                                tmp_buf[i]=path[i];
+                        tmp_buf[i]='\0';
+			if( MACADDRESS_SIZE == sscanf(tmp_buf, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
+                        {
+                                for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
+                                {
+                                	mac[wificlientindex] = (unsigned char) arr[wificlientindex];
+
+                                }
+				if( radioIndex == 0)
+                                        memcpy(bs_t[count].bs_mac0,mac,(sizeof(unsigned char))*6);
+				else if( radioIndex == 1)
+                                        memcpy(bs_t[count].bs_mac1,mac,(sizeof(unsigned char))*6);
+			}
+			
+		}
+		pclose(fp);
+	}
+	return RETURN_OK;
+}
+
+INT wifi_switchBand(char *interface_name, INT radioIndex, char *freqBand){
+
+	ULONG arr_count = 0;
+	char mac_id[256] = {0};
+	int j = 0, RssiThreshold = 0;
+	char buf1[MAX_BUF_SIZE]={'\0'},buf[MAX_BUF_SIZE]={'\0'};
+	char cmd[MAX_CMD_SIZE]={'\0'};
+
+	bs_AssDevices_t *bs_swtchBand = NULL;
+	wifi_macRecord(interface_name,radioIndex,freqBand,&bs_swtchBand,&arr_count);
+	wifi_getBandSteeringRSSIThreshold(radioIndex, &RssiThreshold);
+
+	sprintf(cmd, "cat /tmp/wifi_%s.txt | wc -l",interface_name);
+        _syscmd(cmd,buf,sizeof(buf));
+
+	if(atoi(buf) != 0){
+		if( strcmp(freqBand,"5GHz")==0 ){
+			for(j=0 ; j<arr_count ; j++)
+        		{
+				sprintf(mac_id,"%02x:%02x:%02x:%02x:%02x:%02x",
+					bs_swtchBand[j].bs_mac1[0],
+                                 	bs_swtchBand[j].bs_mac1[1],
+                                 	bs_swtchBand[j].bs_mac1[2],
+                                 	bs_swtchBand[j].bs_mac1[3],
+                                 	bs_swtchBand[j].bs_mac1[4],
+                                 	bs_swtchBand[j].bs_mac1[5]
+					);
+				sprintf(cmd, "iw dev %s station dump | sed -n -e '/Station %s/,/Station/ p' | grep signal |cut -d ' ' -f3 | awk '{print $1}'",interface_name,mac_id);
+                        	_syscmd(cmd,buf1,sizeof(buf1));
+	                	if (atoi(buf1) < RssiThreshold){
+                                	//When RSSI is lesser than RSSI Threshold, client has to be moved from 5GHz to 2.4GHz.
+					wifi_kickApAssociatedDevice(radioIndex, mac_id);
+				}
+			}
+		}
+		else{
+			for(j=0 ; j<arr_count ; j++)
+                	{
+                        	sprintf(mac_id,"%02x:%02x:%02x:%02x:%02x:%02x",
+                                	bs_swtchBand[j].bs_mac0[0],
+                                 	bs_swtchBand[j].bs_mac0[1],
+                                 	bs_swtchBand[j].bs_mac0[2],
+                                 	bs_swtchBand[j].bs_mac0[3],
+                                 	bs_swtchBand[j].bs_mac0[4],
+                                 	bs_swtchBand[j].bs_mac0[5]
+                                	);
+                        	sprintf(cmd, "iw dev %s station dump | sed -n -e '/Station %s/,/Station/ p' | grep signal |cut -d ' ' -f3 | awk '{print $1}'",interface_name,mac_id);
+                        	_syscmd(cmd,buf1,sizeof(buf1));
+                        	if (atoi(buf1) >= RssiThreshold){
+                                	//When RSSI is greater than RSSI Threshold, client has to be moved from 2.4GHz to 5GHz.
+					wifi_kickApAssociatedDevice(radioIndex, mac_id);
+                        	}
+                	}
+		}
+	}
+	if(bs_swtchBand)
+                free(bs_swtchBand);
+	return RETURN_OK;
+}
 
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering.BandSetting.{i}.PhyRateThreshold int r/w
 //to set and read the band steering physical modulation rate threshold parameters 
