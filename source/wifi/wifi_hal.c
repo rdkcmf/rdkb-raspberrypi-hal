@@ -6803,9 +6803,9 @@ INT wifi_switchBand(char *interface_name, INT radioIndex, char *freqBand){
 	ULONG arr_count = 0;
 	char mac_id[256] = {0};
 	int j = 0, RssiThreshold = 0;
-	char buf1[MAX_BUF_SIZE]={'\0'},buf[MAX_BUF_SIZE]={'\0'};
+	char buf1[MAX_BUF_SIZE]={'\0'},buf[MAX_BUF_SIZE]={'\0'},buf2[MAX_BUF_SIZE]={'\0'};
 	char cmd[MAX_CMD_SIZE]={'\0'};
-
+	char interface[512] = {0};
 	bs_AssDevices_t *bs_swtchBand = NULL;
 	wifi_macRecord(interface_name,radioIndex,freqBand,&bs_swtchBand,&arr_count);
 	wifi_getBandSteeringRSSIThreshold(radioIndex, &RssiThreshold);
@@ -6848,8 +6848,16 @@ INT wifi_switchBand(char *interface_name, INT radioIndex, char *freqBand){
                         	_syscmd(cmd,buf1,sizeof(buf1));
                         	if (atoi(buf1) >= RssiThreshold){
                                 	//When RSSI is greater than RSSI Threshold, client has to be moved from 2.4GHz to 5GHz.
-					wifi_kickApAssociatedDevice(radioIndex, mac_id);
-                        	}
+				     	//Check for client capability
+					GetInterfaceName(interface,"/nvram/hostapd1.conf");
+                        		sprintf(cmd, "cat /tmp/event_count.txt | tr -d ' ' | grep %s:newstation%s | wc -l",interface,mac_id);
+                        		_syscmd(cmd,buf,sizeof(buf));
+                        		sprintf(cmd, "cat /tmp/event_count.txt | tr -d ' ' | grep %s:delstation%s | wc -l",interface,mac_id);
+                        		_syscmd(cmd,buf2,sizeof(buf2));
+					if ((atoi(buf) != 0) || (atoi(buf2) != 0)){
+                                                 wifi_kickApAssociatedDevice(radioIndex, mac_id);
+                        	        }
+                                 }
                 	}
 		}
 	}
