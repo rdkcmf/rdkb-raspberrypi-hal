@@ -65,6 +65,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "dhcp4cApi.h"
 #include "dhcpv4c_api.h"
 /**********************************************************************************
@@ -78,20 +80,42 @@ void query_all();
 static int query_all_in_progress = 0;
 #endif
 
-/* Dnsmasq.leases file is generated and have all information of client leases. We check for clients whether connected ,
- by checking dnsmaq.leases file  */
-
-static int check_client_connected()
+#define UPTIME_FILE_PATH        "/proc/uptime"
+#define MAX_LINE_SIZE           64
+static int dhcpv4c_get_up_time(unsigned int *up_time)
 {
-   int connected_client=0;
-   FILE *fp;
-   char buf[256] = {0};
-   fp=popen("cat /nvram/dnsmasq.leases | awk '/10.0.0./ {print $3}' | wc -l","r");
-   if(fgets(buf,sizeof(buf),fp)!= NULL)
-      connected_client = atoi (buf);
-   return connected_client;
-}
+    FILE *fp;
+    char line[MAX_LINE_SIZE];
+    char *ret_val;
+    unsigned int upTime = 0;
+   
+   /* This file contains two numbers:
+    * the uptime of the system (seconds), and the amount of time spent in idle process (seconds). 
+    * We care only for the first one */
+    fp = fopen( UPTIME_FILE_PATH, "r");
+    if (fp == NULL)
+    {
+        return -1;
+    }
+  
+    ret_val = fgets(line,MAX_LINE_SIZE,fp);
+    fclose(fp);
 
+    if (ret_val == NULL)
+    {
+        return -1;
+    }
+
+    /* Extracting the first token (number of up-time in seconds). */
+    ret_val = strtok (line," .");
+
+    /* we need only the number of seconds */
+    upTime += atoi(ret_val);
+
+    *up_time = upTime;
+
+    return 0;
+}
 
 /* dhcpv4c_get_ert_lease_time() function */
 /**
@@ -117,6 +141,12 @@ INT dhcpv4c_get_ert_lease_time(UINT *pValue)
     } 
     else 
     {
+	char buf[256] = {0};
+        FILE *fr=NULL;
+        fr= popen("sysevent get ipv4_erouter0_lease_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+	*pValue = atoi(buf);
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_lease_time(pValue);
     }
@@ -146,6 +176,21 @@ INT dhcpv4c_get_ert_remain_lease_time(UINT *pValue)
     }
     else
     {
+	char buf[256] = {0};
+        FILE *fr=NULL;
+	unsigned lease_time = 0, start_time = 0, up_time = 0, remain_lease_time = 0;
+        fr= popen("sysevent get ipv4_erouter0_lease_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+	lease_time=atoi(buf);
+	memset(buf,0,sizeof(buf));
+        fr= popen("sysevent get ipv4_erouter0_start_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+	start_time=atoi(buf);
+	dhcpv4c_get_up_time(&up_time);
+	remain_lease_time = lease_time - (up_time - start_time);
+	*pValue = remain_lease_time;
         return STATUS_SUCCESS;
        //return dhcp4c_get_ert_remain_lease_time(pValue);
     }
@@ -175,6 +220,22 @@ INT dhcpv4c_get_ert_remain_renew_time(UINT *pValue)
     } 
     else 
     {
+	char buf[256] = {0};
+        FILE *fr=NULL;
+        unsigned lease_time = 0, start_time = 0, up_time = 0, remain_renew_time = 0,renew_time = 0;
+        fr= popen("sysevent get ipv4_erouter0_lease_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+        lease_time=atoi(buf);
+        renew_time = lease_time/2;
+        memset(buf,0,sizeof(buf));
+        fr= popen("sysevent get ipv4_erouter0_start_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+        start_time=atoi(buf);
+        dhcpv4c_get_up_time(&up_time);
+        remain_renew_time = renew_time - (up_time - start_time);
+        *pValue = remain_renew_time;
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_remain_renew_time(pValue);
     }
@@ -204,6 +265,22 @@ INT dhcpv4c_get_ert_remain_rebind_time(UINT *pValue)
     } 
     else 
     {
+	char buf[256] = {0};
+        FILE *fr=NULL;
+        unsigned lease_time = 0, start_time = 0, up_time = 0, remain_rebind_time = 0,rebind_time = 0;
+        fr= popen("sysevent get ipv4_erouter0_lease_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+        lease_time=atoi(buf);
+	rebind_time = lease_time*7/8;
+        memset(buf,0,sizeof(buf));
+        fr= popen("sysevent get ipv4_erouter0_start_time","r");
+        fgets(buf,sizeof(buf),fr);
+        pclose(fr);
+        start_time=atoi(buf);
+        dhcpv4c_get_up_time(&up_time);
+	remain_rebind_time = rebind_time - (up_time - start_time);
+        *pValue = remain_rebind_time;
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_remain_rebind_time(pValue);
     }
@@ -233,6 +310,7 @@ INT dhcpv4c_get_ert_config_attempts(INT *pValue)
     } 
     else 
     {
+	*pValue = 100;
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_config_attempts(pValue);
     }
@@ -262,6 +340,16 @@ INT dhcpv4c_get_ert_ifname(CHAR *pName)
     } 
     else 
     {
+	FILE *fr = NULL;
+	char buf[128] = {0},temp_buf[128] = {0};
+	int count=0;
+        fr= popen("sysevent get current_wan_ifname","r");
+        fgets(buf,sizeof(buf),fr);
+	for(count=0;buf[count]!='\n';count++)
+		temp_buf[count]=buf[count];
+	temp_buf[count]='\0';
+	strcpy(pName,temp_buf);
+	pclose(fr);
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_ifname(pName);
     }
@@ -293,16 +381,14 @@ Bound                 = 5
 */
 INT dhcpv4c_get_ert_fsm_state(INT *pValue)
 {
-  int cli_connected=0;
-   cli_connected = check_client_connected();
-    if(pValue==NULL || cli_connected == 0)
+    if(pValue==NULL)
     {    
-       *pValue = 1;
+           *pValue = 1;
            return STATUS_FAILURE;
     }
     else
     {
-       *pValue = 5; //5 indicates that status is bound. Client gets Ip addrs and changes its state to bound.
+           *pValue = 5; //5 indicates that status is bound. Client gets Ip addrs and changes its state to bound.
             return STATUS_SUCCESS;
        //return dhcp4c_get_ert_fsm_state(pValue);
     }
@@ -326,20 +412,20 @@ INT dhcpv4c_get_ert_fsm_state(INT *pValue)
 */
 INT dhcpv4c_get_ert_ip_addr(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if (NULL == pValue || cli_connected == 0) 
+    if (NULL == pValue ) 
     {    
         return STATUS_FAILURE;
     } 
     else 
     {
-	FILE *fr;
-	char *ptemp=pValue;
-        char buf[256] = {0};
-        fr= popen("head -n1 /nvram/dnsmasq.leases | awk '/10.0.0./ {print $3}'","r");
+	char buf[256] = {0};
+        FILE *fr=NULL;
+	struct in_addr addr;
+        fr= popen("sysevent get ipv4_erouter0_ipaddr","r");
         fgets(buf,sizeof(buf),fr);
-	sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
+	pclose(fr);
+	inet_aton(buf, &addr);
+	*pValue = addr.s_addr;
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_ip_addr(pValue);
     }
@@ -363,20 +449,21 @@ INT dhcpv4c_get_ert_ip_addr(UINT *pValue)
 */
 INT dhcpv4c_get_ert_mask(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if (NULL == pValue || cli_connected == 0) 
+    if (NULL == pValue) 
     {    
         return STATUS_FAILURE;
     } 
     else 
     {
         FILE *fr;
-        char *ptemp=pValue;
         char buf[256] = {0};
-        fr= popen("cat /var/dnsmasq.conf | awk '/dhcp-range/ {print $1}' | cut -d',' -f3","r");
+	unsigned mask = 0;
+        fr= popen("sysevent get ipv4_erouter0_subnet","r");
         fgets(buf,sizeof(buf),fr);
-        sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
+	pclose(fr);
+	mask=atoi(buf);
+	mask = (0xFFFFFFFF << (32 - mask)) & 0xFFFFFFFF;
+        *pValue = htonl(mask);
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_mask(pValue);
     }
@@ -400,9 +487,7 @@ INT dhcpv4c_get_ert_mask(UINT *pValue)
 */
 INT dhcpv4c_get_ert_gw(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if(pValue==NULL || cli_connected == 0)
+    if(pValue==NULL)
     {    
        return(STATUS_FAILURE);
     }
@@ -410,10 +495,12 @@ INT dhcpv4c_get_ert_gw(UINT *pValue)
     {
         char buf[256] = {0};
         FILE *fr;
-        char *ptemp=pValue;
-        fr= popen("syscfg get lan_ipaddr","r");
+	struct in_addr addr;
+        fr= popen("sysevent get default_router","r");
         fgets(buf,sizeof(buf),fr);
-        sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
+	pclose(fr);
+	inet_aton(buf, &addr);
+        *pValue = addr.s_addr;
         return STATUS_SUCCESS;
        //return dhcp4c_get_ert_gw(pValue);
     }
@@ -437,15 +524,47 @@ INT dhcpv4c_get_ert_gw(UINT *pValue)
 */
 INT dhcpv4c_get_ert_dns_svrs(dhcpv4c_ip_list_t *pList)
 {
-    if (NULL == pList) 
-    {    
-        return STATUS_FAILURE;
-    } 
-    else 
-    {
-        return STATUS_SUCCESS;
-        //return dhcp4c_get_ert_dns_svrs((ipv4AddrList_t*) pList);
-    }
+	if (NULL == pList) 
+	{    
+		return STATUS_FAILURE;
+	} 
+	else 
+	{
+		char buf[256] = {0};;
+		struct in_addr addr;
+		FILE *fr=NULL;
+		unsigned dns_num = 0;
+
+		fr= popen("sysevent get ipv4_erouter0_dns_number","r");
+		fgets(buf,sizeof(buf),fr);
+		pclose(fr);
+
+		dns_num = atoi(buf);
+
+		if (dns_num >= 1) {
+			int i = 0;
+
+			if (dns_num >4)
+				dns_num = 4;
+
+			for (i=0; i<dns_num; i++) {
+				char gw_str[32];
+				memset(gw_str, 0, sizeof(gw_str));
+				sprintf(gw_str,"sysevent get ipv4_erouter0_dns_%d",i);
+				memset(buf,0,sizeof(buf));
+				fr= popen(gw_str,"r");
+				fgets(buf,sizeof(buf),fr);
+				pclose(fr);
+				inet_aton(buf, &addr);
+				pList->addrs[i] = addr.s_addr;
+			}
+			pList->number = dns_num;
+		} else {
+			pList->number = 0;
+		}
+		return STATUS_SUCCESS;
+		//return dhcp4c_get_ert_dns_svrs((ipv4AddrList_t*) pList);
+	}
 }
 
 /* dhcpv4c_get_ert_dhcp_svr() function */
@@ -466,9 +585,7 @@ INT dhcpv4c_get_ert_dns_svrs(dhcpv4c_ip_list_t *pList)
 */
 INT dhcpv4c_get_ert_dhcp_svr(UINT *pValue)
 {
-  int cli_connected = 0;
-  cli_connected = check_client_connected();
-    if (NULL == pValue || cli_connected == 0) 
+    if (NULL == pValue) 
     {    
         return STATUS_FAILURE;
     } 
@@ -476,10 +593,12 @@ INT dhcpv4c_get_ert_dhcp_svr(UINT *pValue)
     {
         FILE *fr;
         char buf[256] = {0};
-        char *ptemp=pValue;
-        fr= popen("syscfg get lan_ipaddr","r");
+	struct in_addr addr;
+        fr= popen("sysevent get ipv4_erouter0_dhcp_server","r");
         fgets(buf,sizeof(buf),fr);
-        sscanf(buf,"%d.%d.%d.%d",ptemp,ptemp+1,ptemp+2,ptemp+3);
+	pclose(fr);
+	inet_aton(buf, &addr);
+	*pValue = addr.s_addr;
         return STATUS_SUCCESS;
         //return dhcp4c_get_ert_dhcp_svr(pValue);
     }
