@@ -6414,6 +6414,8 @@ INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev
 	free(line);
 	fclose(f);
 #endif
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	char interface_name[MAX_BUF_SIZE] = {0};
 	char wifi_status[MAX_BUF_SIZE] = {0};
 	char hostapdconf[MAX_BUF_SIZE] = {0};
@@ -6446,6 +6448,12 @@ INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev
 				*associated_dev_array = NULL;
 			}
 		}
+	}
+	}
+	else
+	{
+		if((apIndex >= 2) && (apIndex < 17))
+			*associated_dev_array = NULL;
 	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
@@ -6495,6 +6503,14 @@ INT getIPAddress(char *str,char *ipaddr)
     return RETURN_OK;
 }
 
+typedef struct _wifi_disassociation_details
+{
+         CHAR  wifi_mac[64];
+         INT   wifi_state;
+         INT   wifi_signalstrength;
+
+}wifi_disassociation_details_t;
+
 /* wifi_getApInactiveAssociatedDeviceDiagnosticResult function */
 /**
 * @description Returning Inactive wireless connected clients informations
@@ -6508,85 +6524,67 @@ INT getIPAddress(char *str,char *ipaddr)
 * @retval RETURN_ERR if any error is detected
 *
 */
-
-INT wifi_getApInactiveAssociatedDeviceDiagnosticResult(char *filename,wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
+INT wifi_getApInactiveAssociatedDeviceDiagnosticResult(char *filename,wifi_disassociation_details_t **w_disassoc_clients, UINT *output_array_size)
 {
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-	int count = 0,maccount = 0,i = 0,wificlientindex = 0;
-	FILE *fp = NULL;
-	int arr[MACADDRESS_SIZE] = {0};
-	unsigned char mac[MACADDRESS_SIZE] = {0};
-	char path[1024] = {0},str[1024] = {0},ipaddr[50] = {0},buf[512] = {0};
-	sprintf(buf,"cat %s | grep Station | sort | uniq | wc -l",filename);
-	fp = popen(buf,"r");
-	if(fp == NULL)
-		return RETURN_ERR;
-	else
-	{
-		fgets(path,sizeof(path),fp);
-		maccount = atoi(path);
-	}
-	pclose(fp);
-	*output_array_size = maccount;
-	wifi_associated_dev3_t* temp = NULL;
-	temp = (wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
-	*associated_dev_array = temp;
-	if(temp == NULL)
-	{
-		printf("Error Statement. Insufficient memory \n");
-		return RETURN_ERR;
-	}
-	memset(buf,0,sizeof(buf));
-	sprintf(buf,"cat %s | grep Station | cut -d ' ' -f2 | sort | uniq",filename);
-	fp = popen(buf,"r");
-	for(count = 0; count < maccount ; count++)
-	{
-		fgets(path,sizeof(path),fp);
-		for(i = 0; path[i]!='\n';i++)
-			str[i]=path[i];
-		str[i]='\0';
-		getIPAddress(str,ipaddr);
-		memset(buf,0,sizeof(buf));
-		if(strlen(ipaddr) > 0)
-		{
-			sprintf(buf,"ping -q -c 1 -W 1  \"%s\"  > /dev/null 2>&1",ipaddr);
-			if (WEXITSTATUS(system(buf)) != 0)  //InActive wireless clients info
-			{
-				if( MACADDRESS_SIZE == sscanf(str, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
-				{
-					for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
-					{
-						mac[wificlientindex] = (unsigned char) arr[wificlientindex];
-
-					}
-					memcpy(temp[count].cli_MACAddress,mac,(sizeof(unsigned char))*6);
-					fprintf(stderr,"%sMAC %d = %X:%X:%X:%X:%X:%X \n", __FUNCTION__,count, temp[count].cli_MACAddress[0],temp[count].cli_MACAddress[1], temp[count].cli_MACAddress[2], temp[count].cli_MACAddress[3], temp[count].cli_MACAddress[4], temp[count].cli_MACAddress[5]);
-				}
-				temp[count].cli_AuthenticationState = 0; //TODO
-				temp[count].cli_Active = 0; //TODO      
-				temp[count].cli_SignalStrength = 0;
-			}
-			else //Active wireless clients info
-			{
-				if( MACADDRESS_SIZE == sscanf(str, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
-				{
-					for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
-					{
-						mac[wificlientindex] = (unsigned char) arr[wificlientindex];
-
-					}
-					memcpy(temp[count].cli_MACAddress,mac,(sizeof(unsigned char))*6);
-					fprintf(stderr,"%sMAC %d = %X:%X:%X:%X:%X:%X \n", __FUNCTION__,count, temp[count].cli_MACAddress[0],temp[count].cli_MACAddress[1], temp[count].cli_MACAddress[2], temp[count].cli_MACAddress[3], temp[count].cli_MACAddress[4], temp[count].cli_MACAddress[5]);
-				}
-				temp[count].cli_Active = 1;
-			}
-		}
-		memset(ipaddr,0,sizeof(ipaddr));
-	}
-	pclose(fp);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-	return RETURN_OK;
+        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+        int count = 0,maccount = 0,i = 0,wificlientindex = 0;
+        FILE *fp = NULL;
+        char path[1024] = {0},str[64] = {0},ipaddr[50] = {0},buf[512] = {0},cmd[1024] = {0},interface_name[10] = {0};
+        sprintf(buf,"cat %s | grep Station | sort | uniq | wc -l",filename);
+        fp = popen(buf,"r");
+        if(fp == NULL)
+                return RETURN_ERR;
+        else
+        {
+                fgets(path,sizeof(path),fp);
+                maccount = atoi(path);
+        }
+        pclose(fp);
+        *output_array_size = maccount;
+        if(strcmp(filename,"/tmp/AllAssociated_Devices_2G.txt") == 0)
+                GetInterfaceName(interface_name,"/nvram/hostapd0.conf");
+        else
+                GetInterfaceName(interface_name,"/nvram/hostapd1.conf");
+        wifi_disassociation_details_t* pt = NULL;
+        *w_disassoc_clients = (wifi_disassociation_details_t *) calloc (*output_array_size, sizeof(wifi_disassociation_details_t));
+        memset(buf,0,sizeof(buf));
+        sprintf(buf,"cat %s | grep Station | cut -d ' ' -f2 | sort | uniq",filename);
+        fp = popen(buf,"r");
+        for(count = 0,pt=*w_disassoc_clients; count < maccount ; count++,pt++)
+        {
+                fgets(path,sizeof(path),fp);
+                for(i = 0; path[i]!='\n';i++)
+                        str[i]=path[i];
+                str[i]='\0';
+                getIPAddress(str,ipaddr);
+                memset(buf,0,sizeof(buf));
+                if(strlen(ipaddr) > 0)
+                {
+                        strcpy(pt->wifi_mac,str);
+                        sprintf(buf,"ping -q -c 1 -W 1  \"%s\"  > /dev/null 2>&1",ipaddr);
+                        if (WEXITSTATUS(system(buf)) != 0)  //InActive wireless clients info
+                        {
+                                pt->wifi_state = 0;
+                                pt->wifi_signalstrength = 0;
+                                printf("%s MACADDRESS - INACTIVE : %s and state : %d \n",__FUNCTION__,pt->wifi_mac,pt->wifi_state);
+                        }
+                        else
+			   {
+                                pt->wifi_state = 1;
+                                memset(buf,0,sizeof(buf));
+                                sprintf(cmd, "iw dev %s station dump | sed -n -e '/Station %s/,/Station/ p' | grep signal |cut -d ' ' -f3 | awk '{print $1}'",interface_name,str);
+                                _syscmd(cmd,buf,sizeof(buf));
+                                 pt->wifi_signalstrength = atoi(buf);
+                                printf("%s MACADDRESS - ACTIVE : %s and state : %d \n",__FUNCTION__,pt->wifi_mac,pt->wifi_state);
+                        }
+                }
+                memset(ipaddr,0,sizeof(ipaddr));
+        }
+        pclose(fp);
+        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+        return RETURN_OK;
 }
+
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering object
 //Device.WiFi.X_RDKCENTRAL-COM_BandSteering.Capability bool r/o
 //To get Band Steering Capability
