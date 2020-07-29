@@ -64,6 +64,7 @@
 **********************************************************************/
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -1038,6 +1039,27 @@ INT dhcpv4c_get_emta_remain_rebind_time(UINT *pValue)
         return STATUS_SUCCESS;
         //return dhcp4c_get_emta_remain_rebind_time(pValue);
     }
+}
+
+bool AnscValidStringCheck(char *pString)
+{
+	int i =0;
+
+	/* check if pstring doesn't hold NULL or whitespaces */
+	if((pString == NULL) || (*pString=='\0'))
+	{
+		return FALSE;
+	}
+	while(pString[i] != '\0')
+	{
+		if ((pString[i] == ' ') || (pString[i] == '<') || (pString[i] == '>') || (pString[i] == '&') || (pString[i] == '\'') || (pString[i] == '\"') || (pString[i] == '|'))
+		{
+			return FALSE;
+		}
+		i++;
+	}
+	return TRUE;
+
 }
 
 #if 0
