@@ -562,6 +562,7 @@ void Dynamically_Enabling_hostapd_process(int apIndex)
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
         sprintf(cmd,"hostapd_cli -p /var/run/hostapd%d -i %s ENABLE",apIndex,interface_name);
+	printf("%s .. %s \n",__FUNCTION__,cmd);
         system(cmd);
         WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
@@ -1392,7 +1393,9 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 		if (NULL == output_bool)
 		{
 			return RETURN_ERR;
-		} else {
+		} 
+		else 
+		{
 			sprintf(cmd,"iwconfig %s",IfName);
 			_syscmd(cmd,buf,sizeof(buf));
 			if(strlen(buf) == 0)
@@ -1400,53 +1403,30 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 				*output_bool=0;
 				return RETURN_OK;
 			}
-			memset(cmd,0,sizeof(cmd));
-			memset(buf,0,sizeof(buf));
-			sprintf(cmd,"iwconfig %s | grep Not-Associated | cut -d ':' -f3 | cut -d ' ' -f2",IfName);
-			_syscmd(cmd,buf,sizeof(buf));
-			if(strlen(buf) == 0)
-				printf("buf is empty \n");
-			else
+			*output_bool=0;
+			if(radioIndex == 0)
+				fp = fopen("/var/Get2gRadioEnable.txt","r");
+			else if(radioIndex == 1)
+				fp = fopen("/var/Get5gRadioEnable.txt","r");
+			if(fp == NULL)
 			{
-				for(count = 0; buf[count] !='\n' ; count++)
-					tmp_status[count] = buf[count];
-				tmp_status[count] = '\0';
+				*output_bool = 0;
+				return RETURN_OK;
 			}
-			sprintf(cmd,"%s%s%s","ifconfig ",IfName," | grep RUNNING | tr -s ' ' | cut -d ' ' -f4");
-			_syscmd(cmd,buf,sizeof(buf));
-			if(strlen(buf) == 0)
-				printf("buf is empty \n");
-			if(strcmp(tmp_status,"Not-Associated") == 0 || strlen(buf) == 0)
+			memset(tmp_status,0,sizeof(tmp_status));
+			if(fgets(path, sizeof(path)-1, fp) != NULL)
 			{
-				*output_bool=0;
-				if(radioIndex == 0)
-					fp = fopen("/tmp/Get2gRadioEnable.txt","r");
-				else if(radioIndex == 1)
-					fp = fopen("/tmp/Get5gRadioEnable.txt","r");
-				if(fp == NULL)
-				{
-					*output_bool = 0;
-					return RETURN_OK;
-				}
-				memset(tmp_status,0,sizeof(tmp_status));
-				if(fgets(path, sizeof(path)-1, fp) != NULL)
-				{
-					for(count=0;path[count]!='\n';count++)
-						tmp_status[count]=path[count];
-					tmp_status[count]='\0';
-				}
-				fclose(fp);
-				if(strcmp(tmp_status,"0") == 0)
-					*output_bool = 0;
-				else
-					*output_bool = 1;
+				for(count=0;path[count]!='\n';count++)
+					tmp_status[count]=path[count];
+				tmp_status[count]='\0';
 			}
+			fclose(fp);
+			if(strcmp(tmp_status,"0") == 0)
+				*output_bool = 0;
 			else
-			{
 				*output_bool = 1;
-			}
-			return RETURN_OK;
 		}
+		return RETURN_OK;
 	}
 	else
 		printf("Invalid Index value \n");
@@ -1465,9 +1445,9 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)            //RDKB
 	char xfinity_wifi[5] = {0};
 	xfinity_wifi_Up_Down(&xfinity_wifi);
 	if(radioIndex == 0)
-		sprintf(cmd,"%s%d%s","echo ",enable," > /tmp/Get2gRadioEnable.txt");
+		sprintf(cmd,"%s%d%s","echo ",enable," > /var/Get2gRadioEnable.txt");
 	else if(radioIndex == 1)
-		sprintf(cmd,"%s%d%s","echo ",enable," > /tmp/Get5gRadioEnable.txt");
+		sprintf(cmd,"%s%d%s","echo ",enable," > /var/Get5gRadioEnable.txt");
 	else
 		printf("Invalid Index value \n");
 	system(cmd);
@@ -4809,12 +4789,12 @@ INT wifi_startHostApd()
 #endif
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	system("systemctl start hostapd.service");
-        system("echo 1 > /tmp/Get2gssidEnable.txt");
-        system("echo 1 > /tmp/Get5gssidEnable.txt");
-        system("echo 1 > /tmp/GetPub2gssidEnable.txt");
-        system("echo 1 > /tmp/GetPub5gssidEnable.txt");
-        system("echo 1 > /tmp/Get2gRadioEnable.txt");
-        system("echo 1 > /tmp/Get5gRadioEnable.txt");
+        system("echo 1 > /var/Get2gssidEnable.txt");
+        system("echo 1 > /var/Get5gssidEnable.txt");
+        system("echo 1 > /var/GetPub2gssidEnable.txt");
+        system("echo 1 > /var/GetPub5gssidEnable.txt");
+        system("echo 1 > /var/Get2gRadioEnable.txt");
+        system("echo 1 > /var/Get5gRadioEnable.txt");
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
@@ -4832,12 +4812,12 @@ INT wifi_stopHostApd()
 	system("ifconfig wlan1 down");	
 	system("ifconfig wlan2 down");	
 	system("ifconfig wlan3 down");
-        system("echo 0 > /tmp/Get2gssidEnable.txt");
-        system("echo 0 > /tmp/Get5gssidEnable.txt");
-        system("echo 0 > /tmp/GetPub2gssidEnable.txt");
-        system("echo 0 > /tmp/GetPub5gssidEnable.txt");
-        system("echo 0 > /tmp/Get2gRadioEnable.txt");
-        system("echo 0 > /tmp/Get5gRadioEnable.txt");
+        system("echo 0 > /var/Get2gssidEnable.txt");
+        system("echo 0 > /var/Get5gssidEnable.txt");
+        system("echo 0 > /var/GetPub2gssidEnable.txt");
+        system("echo 0 > /var/GetPub5gssidEnable.txt");
+        system("echo 0 > /var/Get2gRadioEnable.txt");
+        system("echo 0 > /var/Get5gRadioEnable.txt");
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;	
 }
@@ -4878,13 +4858,13 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 		printf("Invalid index value \n");
 
 	if(apIndex == 0)
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/Get2gssidEnable.txt");
+		sprintf(command,"%s%d%s","echo ",enable," > /var/Get2gssidEnable.txt");
 	else if(apIndex == 1)
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/Get5gssidEnable.txt");
+		sprintf(command,"%s%d%s","echo ",enable," > /var/Get5gssidEnable.txt");
 	else if(apIndex == 4)
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub2gssidEnable.txt");
+		sprintf(command,"%s%d%s","echo ",enable," > /var/GetPub2gssidEnable.txt");
 	else if(apIndex == 5)
-		sprintf(command,"%s%d%s","echo ",enable," > /tmp/GetPub5gssidEnable.txt");
+		sprintf(command,"%s%d%s","echo ",enable," > /var/GetPub5gssidEnable.txt");
 	else
 		printf("Invalid index value \n");
 	system(command);
@@ -4974,12 +4954,15 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 				printf("Invalid index value 1 \n");
 			if((apIndex == 1) || (apIndex == 5))
 			{
-			if(ssidenable == 0)
-			{
-				printf("Inside failure case in %s : %s \n",__func__,IfName);
-				sprintf(command,"ifconfig %s down",IfName);
-				system(command);
-			}
+				if(strcmp(xfinity_wifi,"1") == 0)
+				{
+					if(ssidenable == 0)
+					{
+						printf("Inside failure case in %s : %s \n",__func__,IfName);
+						sprintf(command,"ifconfig %s down",IfName);
+						system(command);
+					}
+				}
 			}
 			if((apIndex == 0) || (apIndex  == 4))
 			{
@@ -5023,7 +5006,6 @@ INT wifi_setApEnable(INT apIndex, BOOL enable)
 				Dynamically_Enabling_hostapd_process(5);
 				sprintf(command,"ifconfig %s down", interface_name);
 				system(command);
-
 			}	
 		}
 	}
@@ -5067,35 +5049,15 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 				*output_bool=0;
 				return RETURN_OK;
 			}
-			memset(cmd,0,sizeof(cmd));
-			memset(buf,0,sizeof(buf));
-			sprintf(cmd,"iwconfig %s | grep Not-Associated | cut -d ':' -f3 | cut -d ' ' -f2",IfName);
-			_syscmd(cmd,buf,sizeof(buf));
-			if(strlen(buf) == 0)
-				printf("buf is empty \n");
-			else
-			{
-				for(count = 0; buf[count] !='\n' ; count++)
-					tmp_status[count] = buf[count];
-				tmp_status[count] = '\0';
-			}
-			memset(buf,0,sizeof(buf));
-			memset(cmd,0,sizeof(cmd));
-			sprintf(cmd,"%s%s%s","ifconfig ",IfName," | grep RUNNING | tr -s ' ' | cut -d ' ' -f4");
-			_syscmd(cmd,buf,sizeof(buf));
-			if(strlen(buf) == 0)
-				printf("buf is empty \n");
-			if((strcmp(tmp_status,"Not-Associated") == 0) || (strlen(buf) == 0))
-			{
 				*output_bool=0;
 				if(apIndex == 0)
-					fp = fopen("/tmp/Get2gssidEnable.txt","r");
+					fp = fopen("/var/Get2gssidEnable.txt","r");
 				else if(apIndex == 1)
-					fp = fopen("/tmp/Get5gssidEnable.txt","r");
+					fp = fopen("/var/Get5gssidEnable.txt","r");
 				else if(apIndex == 4)
-					fp = fopen("/tmp/GetPub2gssidEnable.txt","r");
+					fp = fopen("/var/GetPub2gssidEnable.txt","r");
 				else if(apIndex == 5)
-					fp = fopen("/tmp/GetPub5gssidEnable.txt","r");
+					fp = fopen("/var/GetPub5gssidEnable.txt","r");
 				if(fp == NULL)
 				{
 					*output_bool = 0;
@@ -5113,11 +5075,6 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 					*output_bool = 0;
 				else
 					*output_bool = 1;
-			}
-			else
-			{
-				*output_bool = 1;
-			}
 		}
 	}
 	else
