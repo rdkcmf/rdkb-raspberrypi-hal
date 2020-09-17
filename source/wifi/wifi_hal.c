@@ -7415,6 +7415,10 @@ INT wifi_getApAssociatedClientDiagnosticResult(INT apIndex, char *mac_addr, wifi
 {
 	return RETURN_OK;
 }
+INT wifi_getRadioPercentageTransmitPower(INT radioIndex, ULONG *output_ulong)
+{
+	return RETURN_OK;
+}
 INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
 {
         return RETURN_OK;
