@@ -7331,6 +7331,161 @@ void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
     return;
 }
 
+INT wifi_getApAssociatedDeviceDiagnosticResult2(INT apIndex, wifi_associated_dev2_t **associated_dev_array, UINT *output_array_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getBSSTransitionActivation(UINT apIndex, BOOL *activate)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApAssociatedDeviceStats(INT apIndex, mac_address_t *clientMacAddress, wifi_associated_dev_stats_t *associated_dev_stats, ULLONG *handle)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getNeighboringWiFiStatus(INT radioIndex, wifi_neighbor_ap2_t **neighbor_ap_array, UINT *output_array_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_startNeighborScan(INT apIndex, wifi_neighborScanMode_t scan_mode, INT dwell_time, UINT chan_num, UINT *chan_list)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_setNeighborReportActivation(UINT apIndex, BOOL activate)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getNeighborReportActivation(UINT apIndex, BOOL *activate)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+void wifi_apDisassociatedDevice_callback_register(wifi_apDisassociatedDevice_callback callback_proc)
+{
+    // TODO Implement me!
+}
+
+INT wifi_getApAssociatedDeviceTxStatsResult(INT radioIndex, mac_address_t *clientMacAddress, wifi_associated_dev_rate_info_tx_stats_t **stats_array, UINT *output_array_size, ULLONG *handle)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_delApAclDevices(INT apINdex)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getSSIDNameStatus(INT apIndex, CHAR *output_string)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getRadioChannelStats(INT radioIndex, wifi_channelStats_t *input_output_channelStats_array, INT array_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_setBTMRequest(UINT apIndex, CHAR *peerMac, wifi_BTMRequest_t *request)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_setRMBeaconRequest(UINT apIndex, CHAR *peer, wifi_BeaconRequest_t *in_request, UCHAR *out_DialogToken)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApMacAddressControlMode(INT apIndex, INT *output_filterMode)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApAssociatedDeviceRxStatsResult(INT radioIndex, mac_address_t *clientMacAddress, wifi_associated_dev_rate_info_rx_stats_t **stats_array, UINT *output_array_size, ULLONG *handle)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_eventRegister(wifi_steering_eventCB_t event_cb)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_eventUnregister(void)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_setGroup(UINT steeringgroupIndex, wifi_steering_apConfig_t *cfg_2, wifi_steering_apConfig_t *cfg_5)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_clientMeasure(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_clientSet(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac, wifi_steering_clientConfig_t *config)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_clientRemove(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_clientDisconnect(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac, wifi_disconnectType_t type, UINT reason)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getRadioChannels(INT radioIndex, wifi_channelMap_t *output_map, INT output_map_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_pushRadioChannel2(INT radioIndex, UINT channel, UINT channel_width_MHz, UINT csa_beacon_count)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_chan_eventRegister(wifi_chan_eventCB_t event_cb)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
