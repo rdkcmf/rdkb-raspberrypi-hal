@@ -7430,6 +7430,11 @@ void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
     return;
 }
 
+INT wifi_getVAPTelemetry(UINT apIndex, wifi_VAPTelemetry_t *telemetry)
+{
+        return RETURN_OK;
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {

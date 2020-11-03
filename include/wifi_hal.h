@@ -5338,6 +5338,16 @@ struct hostap_conf
     char *wpa;
     char *wpa_keymgmt;
 };
+/**
+ * @brief VAP Telemetry information.
+ *
+ * Structure which holds the VAP Telemetry information.
+ */
+typedef struct {
+    UINT                txOverflow;            // WiFi TX overflow counter.
+} wifi_VAPTelemetry_t;
+
+
 //-----------------------------------------------------------------------------------------------
 //Device.WiFi.AccessPoint.{i}.X_COMCAST-COM_InterworkingService. 
 //Device.WiFi.AccessPoint.{i}.X_COMCAST-COM_InterworkingService.AccessNetworkType	
