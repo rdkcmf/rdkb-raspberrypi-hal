@@ -85,6 +85,17 @@
 #define DEF_RADIO_PARAM_CONF "/usr/ccsp/wifi/radio_param_def.cfg"
 #define LM_DHCP_CLIENT_FORMAT   "%63d %17s %63s %63s"
 
+#define POINTER_ASSERT(expr) if(!(expr)) { \
+        printf("%s %d, Invalid parameter error!!!\n", __FUNCTION__,__LINE__); \
+        return RETURN_ERR; \
+       }
+
+#define HAL_RADIO_NUM_RADIOS        2
+#define radioIndex_Assert(Index) if ((Index >= HAL_RADIO_NUM_RADIOS) || (Index < 0)) { \
+         printf("%s, INCORRECT radioIndex [%d] \n", __FUNCTION__, Index); \
+    return RETURN_ERR; \
+    }
+
 //For 5g Alias Interfaces
 static BOOL priv_flag = TRUE;
 static BOOL pub_flag = TRUE;
@@ -918,6 +929,7 @@ INT wifi_setLED(INT radioIndex, BOOL enable)
 //Get the wifi hal version in string, eg "2.0.0".  WIFI_HAL_MAJOR_VERSION.WIFI_HAL_MINOR_VERSION.WIFI_HAL_MAINTENANCE_VERSION
 INT wifi_getHalVersion(CHAR *output_string)   //RDKB   
 {
+        POINTER_ASSERT(output_string != NULL);
 	snprintf(output_string, 64, "%d.%d.%d", WIFI_HAL_MAJOR_VERSION, WIFI_HAL_MINOR_VERSION, WIFI_HAL_MAINTENANCE_VERSION);
 	return RETURN_OK;
 }
@@ -1386,6 +1398,9 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 	FILE *fp = NULL;
 	if(radioIndex < 0)
 		return RETURN_ERR;
+
+	POINTER_ASSERT(output_bool != NULL);
+	radioIndex_Assert(radioIndex);
 	if((radioIndex == 0) || (radioIndex == 1) || (radioIndex == 4) || (radioIndex == 5))
 	{
 		sprintf(HConf_file,"%s%d%s","/nvram/hostapd",radioIndex,".conf");
@@ -7432,7 +7447,7 @@ void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
 
 INT wifi_getVAPTelemetry(UINT apIndex, wifi_VAPTelemetry_t *telemetry)
 {
-        return RETURN_OK;
+	return RETURN_OK;
 }
 
 #ifdef _WIFI_HAL_TEST_
