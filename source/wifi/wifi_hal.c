@@ -1680,7 +1680,10 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
 	        return RETURN_ERR;
 	    }
         ch=strchr(buf,'\n');
-        *ch='\0';
+        if(NULL != ch)
+        {
+            *ch='\0';
+        }
         ch=strchr(buf,'=');
         if(ch==NULL)
           return RETURN_ERR;
@@ -1705,7 +1708,10 @@ INT wifi_getRadioSupportedFrequencyBands(INT radioIndex, CHAR *output_string)	//
 		
 		ch2=strchr(str,'\n');
 		//replace \n with \0
-		*ch2='\0';
+        if(NULL != ch2)
+        {
+            *ch2='\0';
+        }
         ch2=strchr(str,'=');
         if(ch2==NULL)
         {
@@ -1758,7 +1764,10 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
         }
 	
         ch=strchr(buf,'\n');
-        *ch='\0';
+        if(NULL != ch)
+        {
+            *ch='\0';
+        }
 	ch=strchr(buf,'=');
         if(ch==NULL)
           return RETURN_ERR;
@@ -1786,7 +1795,10 @@ INT wifi_getRadioOperatingFrequencyBand(INT radioIndex, CHAR *output_string) //T
 		
 		ch2=strchr(str,'\n');
 		//replace \n with \0
-		*ch2='\0';
+        if(NULL != ch2)
+        {
+            *ch2='\0';
+        }
         ch2=strchr(str,'=');
         if(ch2==NULL)
         {
