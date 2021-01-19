@@ -7450,6 +7450,11 @@ INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
 {
         return RETURN_OK;
 }
+INT wifi_getBSSTransitionActivation(UINT apIndex, BOOL *activate)
+{
+        return RETURN_ERR;
+}
+
 wifi_apAuthEvent_callback apAuthEvent_cb = NULL;
 
 void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
