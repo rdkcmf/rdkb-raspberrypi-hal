@@ -7454,7 +7454,9 @@ INT wifi_getBSSTransitionActivation(UINT apIndex, BOOL *activate)
 {
         return RETURN_ERR;
 }
-
+wifi_anqpStartReceivingTestFrame()
+{
+}
 wifi_apAuthEvent_callback apAuthEvent_cb = NULL;
 
 void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
