@@ -63,6 +63,7 @@
 
 #define MAX_BUF_SIZE 128
 #define MAX_CMD_SIZE 1024
+#define MACADDRESS_SIZE 6
 
 #define WIFI_DEBUG 
 
@@ -1411,9 +1412,9 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 		} 
 		else 
 		{
-			sprintf(cmd,"iwconfig %s",IfName);
-			_syscmd(cmd,buf,sizeof(buf));
-			if(strlen(buf) == 0)
+			sprintf(buf,"iwconfig %s",IfName);
+			_syscmd(buf,cmd,sizeof(cmd));
+			if(strlen(cmd) == 0)
 			{
 				*output_bool=0;
 				return RETURN_OK;
@@ -4100,30 +4101,22 @@ INT wifi_getApName(INT apIndex, CHAR *output_string)
 	if (NULL == output_string) 
 		return RETURN_ERR;
 	snprintf(output_string, 16, "%s%d", AP_PREFIX, apIndex);
-	/*char HConf_file[MAX_BUF_SIZE] = {'\0'};
-	char IfName[MAX_BUF_SIZE] = {'\0'};
-	char cmd[MAX_CMD_SIZE] = {'\0'};
-	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
-	{
-        sprintf(HConf_file,"%s%d%s","/nvram/hostapd",apIndex,".conf");
-	GetInterfaceName(IfName,HConf_file);
-	strcpy(output_string,IfName);	
-	}*/
 	return RETURN_OK;
 }     
        
 // Outputs the index number in that corresponds to the SSID string
 INT wifi_getIndexFromName(CHAR *inputSsidString, INT *ouput_int)
 {
-    CHAR *pos=NULL;
+	CHAR *pos=NULL;
 
-    *ouput_int = -1;
+	*ouput_int = -1;
 	pos=strstr(inputSsidString, AP_PREFIX);
+
 	if(pos) 
 	{
 		sscanf(pos+strlen(AP_PREFIX),"%d", ouput_int);
 		return RETURN_OK;
-	} 
+	}
 	return RETURN_ERR;
 }
 
@@ -5295,7 +5288,7 @@ INT wifi_getApMaxAssociatedDevices(INT apIndex, UINT *output_uint)
 	//get the running status from driver
 	if(!output_uint)
 		return RETURN_ERR;
-	*output_uint=5;	
+	*output_uint=64;	
 	return RETURN_OK;
 }
 
@@ -5909,538 +5902,28 @@ INT wifi_cancelApWPS(INT apIndex)
 //HAL funciton should allocate an data structure array, and return to caller with "associated_dev_array"
 INT wifi_getApAssociatedDeviceDiagnosticResult(INT apIndex, wifi_associated_dev_t **associated_dev_array, UINT *output_array_size)
 {
-    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-	FILE *f;
-	int read_flag=0, auth_temp=0, mac_temp=0,i=0;
-	char cmd[256], buf[2048];
-	char *param , *value, *line=NULL;
-	size_t len = 0;
-	ssize_t nread;
-	wifi_associated_dev_t *dev=NULL;
-	*associated_dev_array = NULL;
-	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta | grep AUTHORIZED | wc -l" , apIndex);
-	_syscmd(cmd,buf,sizeof(buf));
-	*output_array_size = atoi(buf);
-
-	if (*output_array_size <= 0)
-		return RETURN_OK;
-
-	dev=(wifi_associated_dev_t *) calloc (*output_array_size, sizeof(wifi_associated_dev_t));
-	*associated_dev_array = dev;
-	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta > /tmp/connected_devices.txt" , apIndex);
-	_syscmd(cmd,buf,sizeof(buf));
-	f = fopen("/tmp/connected_devices.txt", "r");
-	if (f==NULL)
-	{
-		*output_array_size=0;
-		return RETURN_ERR;
-	}
-	while ((nread = getline(&line, &len, f)) != -1)
-	{
-		param = strtok(line,"=");
-		value = strtok(NULL,"=");
-
-		if( strcmp("flags",param) == 0 )
-		{
-			value[strlen(value)-1]='\0';
-			if(strstr (value,"AUTHORIZED") != NULL )
-			{
-				dev[auth_temp].cli_AuthenticationState = 1;
-				dev[auth_temp].cli_Active = 1;
-				auth_temp++;
-				read_flag=1;
-			}
-		}
-		if(read_flag==1)
-		{
-			if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
-			{
-				value[strlen(value)-1]='\0';
-				sscanf(value, "%x:%x:%x:%x:%x:%x",
-						(unsigned int *)&dev[mac_temp].cli_MACAddress[0],
-						(unsigned int *)&dev[mac_temp].cli_MACAddress[1],
-						(unsigned int *)&dev[mac_temp].cli_MACAddress[2],
-						(unsigned int *)&dev[mac_temp].cli_MACAddress[3],
-						(unsigned int *)&dev[mac_temp].cli_MACAddress[4],
-						(unsigned int *)&dev[mac_temp].cli_MACAddress[5] );
-				mac_temp++;
-				read_flag=0;
-			}
-		}
-	}
-	*output_array_size = auth_temp;
-	auth_temp=0;
-	mac_temp=0;
-	free(line);
-	fclose(f);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-	return RETURN_OK;
-}
-
-#define MACADDRESS_SIZE 6
-
-INT wifihal_AssociatedDevicesstats3(INT apIndex,CHAR *interface_name,wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
-{
+	INT ret = RETURN_OK;
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	ret = rpi_getApAssociatedDeviceDiagnosticResult(apIndex, associated_dev_array, output_array_size);
+	if(ret == RETURN_ERR)
+		printf("func[%s], apIndex[%d] ret[%d] associated_dev_array[%p] dev_cnt[%d]\n",
+				__FUNCTION__, apIndex, ret, *associated_dev_array, *output_array_size);
 
-	FILE *fp = NULL;
-	char str[MAX_BUF_SIZE] = {0};
-	int wificlientindex = 0 ;
-	int count = 0;
-	int signalstrength = 0;
-	int arr[MACADDRESS_SIZE] = {0};
-	unsigned char mac[MACADDRESS_SIZE] = {0};
-	UINT wifi_count = 0;
-	char virtual_interface_name[MAX_BUF_SIZE] = {0};
-	char pipeCmd[MAX_CMD_SIZE] = {0};
-
-	*output_array_size = 0;
-	*associated_dev_array = NULL;
-
-	sprintf(pipeCmd, "iw dev %s station dump | grep %s | wc -l", interface_name, interface_name);
-	fp = popen(pipeCmd, "r");
-	if (fp == NULL) 
-	{
-		printf("Failed to run command inside function %s\n",__FUNCTION__ );
-		return RETURN_ERR;
-	}
-	
-	/* Read the output a line at a time - output it. */
-	fgets(str, sizeof(str)-1, fp);
-	wifi_count = (unsigned int) atoi ( str );
-	*output_array_size = wifi_count;
-	printf(" In rdkb hal ,Wifi Client Counts and index %d and  %d \n",*output_array_size,apIndex);
-	pclose(fp);
-
-	if(wifi_count == 0)
-	{
-		return RETURN_OK;
-	}
-	else
-	{
-		wifi_associated_dev3_t* temp = NULL;
-		temp = (wifi_associated_dev3_t*)calloc(1, sizeof(wifi_associated_dev3_t)*wifi_count) ;
-		if(temp == NULL)
-		{
-			printf("Error Statement. Insufficient memory \n");
-			return RETURN_ERR;
-		}
-
-		snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump > /tmp/AssociatedDevice_Stats.txt", interface_name);
-		system(pipeCmd);
-		memset(pipeCmd,0,sizeof(pipeCmd));
-		if(apIndex == 0)
-                	snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump | grep Station >> /tmp/AllAssociated_Devices_2G.txt", interface_name);
-		else if(apIndex == 1)
-	                snprintf(pipeCmd, sizeof(pipeCmd), "iw dev %s station dump | grep Station >> /tmp/AllAssociated_Devices_5G.txt", interface_name);
-                system(pipeCmd);
-
-		fp = fopen("/tmp/AssociatedDevice_Stats.txt", "r");
-		if(fp == NULL)
-		{
-			printf("/tmp/AssociatedDevice_Stats.txt not exists \n");
-			return RETURN_ERR;
-		}
-		fclose(fp);
-
-		sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep Station | cut -d ' ' -f 2", interface_name);
-		fp = popen(pipeCmd, "r");
-		if(fp)
-		{
-			for(count =0 ; count < wifi_count; count++)
-			{
-				fgets(str, MAX_BUF_SIZE, fp);
-				if( MACADDRESS_SIZE == sscanf(str, "%02x:%02x:%02x:%02x:%02x:%02x",&arr[0],&arr[1],&arr[2],&arr[3],&arr[4],&arr[5]) )
-				{
-					for( wificlientindex = 0; wificlientindex < MACADDRESS_SIZE; ++wificlientindex )
-					{
-						mac[wificlientindex] = (unsigned char) arr[wificlientindex];
-
-					}
-					memcpy(temp[count].cli_MACAddress,mac,(sizeof(unsigned char))*6);
-					printf("MAC %d = %X:%X:%X:%X:%X:%X \n", count, temp[count].cli_MACAddress[0],temp[count].cli_MACAddress[1], temp[count].cli_MACAddress[2], temp[count].cli_MACAddress[3], temp[count].cli_MACAddress[4], temp[count].cli_MACAddress[5]);
-				}
-				temp[count].cli_AuthenticationState = 1; //TODO
-                temp[count].cli_Active = 1; //TODO
-			}
-			pclose(fp);
-		}
-
-		sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep signal | tr -s ' ' | cut -d ' ' -f 2 > /tmp/wifi_signalstrength.txt", interface_name);
-		fp = popen(pipeCmd, "r");
-		if(fp)
-		{ 
-			pclose(fp);
-		}
-		fp = popen("cat /tmp/wifi_signalstrength.txt | tr -s ' ' | cut -f 2","r");
-		if(fp)
-		{
-			for(count =0 ; count < wifi_count ;count++)
-			{
-				fgets(str, MAX_BUF_SIZE, fp);
-				signalstrength = atoi(str);
-				temp[count].cli_SignalStrength = signalstrength;
-				temp[count].cli_RSSI = signalstrength;
-				temp[count].cli_SNR = signalstrength + 95;
-			}
-			pclose(fp);
-		}
-
-
-		if((apIndex == 0) || (apIndex == 4))
-		{
-			for(count =0 ; count < wifi_count ;count++)
-			{	
-				strcpy(temp[count].cli_OperatingStandard,"g");
-				strcpy(temp[count].cli_OperatingChannelBandwidth,"20MHz");
-			}
-
-			//BytesSent
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx bytes' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bytes_Send.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if(fp)
-			{ 
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Bytes_Send.txt | tr -s ' ' | cut -f 2","r");
-			if(fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_BytesSent = strtoul(str, NULL, 10);
-				}
-				pclose(fp);
-			}
-
-			//BytesReceived
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'rx bytes' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bytes_Received.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Bytes_Received.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_BytesReceived = strtoul(str, NULL, 10);
-				}
-				pclose(fp);
-			}
-
-			//PacketsSent
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx packets' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Packets_Send.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-
-			fp = popen("cat /tmp/Ass_Packets_Send.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_PacketsSent = strtoul(str, NULL, 10);
-				}
-				pclose(fp);
-			}
-
-			//PacketsReceived
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'rx packets' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Packets_Received.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Packets_Received.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_PacketsReceived = strtoul(str, NULL, 10);
-				}
-				pclose(fp);
-			}
-
-			//ErrorsSent
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx failed' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Tx_Failed.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Tx_Failed.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_ErrorsSent = strtoul(str, NULL, 10);
-				}
-				pclose(fp);
-			}
-
-			//ErrorsSent
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx failed' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Tx_Failed.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Tx_Failed.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_ErrorsSent = strtoul(str, NULL, 10);
-				}
-				pclose(fp);
-			}
-
-			//LastDataDownlinkRate
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'tx bitrate' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bitrate_Send.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Bitrate_Send.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_LastDataDownlinkRate = strtoul(str, NULL, 10);
-					temp[count].cli_LastDataDownlinkRate = (temp[count].cli_LastDataDownlinkRate * 1024); //Mbps -> Kbps
-				}
-				pclose(fp);
-			}
-
-			//LastDataUplinkRate
-			sprintf(pipeCmd, "cat /tmp/AssociatedDevice_Stats.txt | grep 'rx bitrate' | tr -s ' ' | cut -d ' ' -f 2 > /tmp/Ass_Bitrate_Received.txt", interface_name);
-			fp = popen(pipeCmd, "r");
-			if (fp)
-			{
-				pclose(fp);
-			}
-			fp = popen("cat /tmp/Ass_Bitrate_Received.txt | tr -s ' ' | cut -f 2", "r");
-			if (fp)
-			{
-				for (count = 0; count < wifi_count; count++)
-				{
-					fgets(str, MAX_BUF_SIZE, fp);
-					temp[count].cli_LastDataUplinkRate = strtoul(str, NULL, 10);
-					temp[count].cli_LastDataUplinkRate = (temp[count].cli_LastDataUplinkRate * 1024); //Mbps -> Kbps
-				}
-				pclose(fp);
-			}
-
-		}
-		else if ((apIndex == 1) || (apIndex == 5))
-		{
-			for (count = 0; count < wifi_count; count++)
-			{
-				strcpy(temp[count].cli_OperatingStandard, "a");
-				strcpy(temp[count].cli_OperatingChannelBandwidth, "20MHz");
-				temp[count].cli_BytesSent = 0;
-				temp[count].cli_BytesReceived = 0;
-				temp[count].cli_LastDataUplinkRate = 0;
-				temp[count].cli_LastDataDownlinkRate = 0;
-				temp[count].cli_PacketsSent = 0;
-				temp[count].cli_PacketsReceived = 0;
-				temp[count].cli_ErrorsSent = 0;
-			}
-		}
-
-		for (count = 0; count < wifi_count; count++)
-		{
-			temp[count].cli_Retransmissions = 0;
-			temp[count].cli_DataFramesSentAck = 0;
-			temp[count].cli_DataFramesSentNoAck = 0;
-			temp[count].cli_MinRSSI = 0;
-			temp[count].cli_MaxRSSI = 0;
-			strncpy(temp[count].cli_InterferenceSources, "", 64);
-			memset(temp[count].cli_IPAddress, 0, 64);
-			temp[count].cli_RetransCount = 0;
-			temp[count].cli_FailedRetransCount = 0;
-			temp[count].cli_RetryCount = 0;
-			temp[count].cli_MultipleRetryCount = 0;
-		}
-		*associated_dev_array = temp;
-	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-	return RETURN_OK;
+	return ret;
 }
 
-int wifihal_interfacestatus(CHAR *wifi_status,CHAR *interface_name)
-{
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
-	FILE *fp = NULL;
-	char path[512] = {0},status[MAX_BUF_SIZE] = {0};
-	char cmd[MAX_CMD_SIZE];
-	int count = 0;
-
-	sprintf(cmd, "ifconfig %s | grep RUNNING | tr -s ' ' | cut -d ' ' -f4", interface_name);
-	fp = popen(cmd,"r");
-	if(fp == NULL)
-	{
-		printf("Failed to run command in Function %s\n",__FUNCTION__);
-		return 0;
-	}
-	if(fgets(path, sizeof(path)-1, fp) != NULL)
-	{
-		for(count=0;path[count]!='\n';count++)
-			status[count]=path[count];
-		status[count]='\0';
-	}
-	strcpy(wifi_status,status);
-	pclose(fp);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-	return RETURN_OK;
-}
-
-//To-do
 INT wifi_getApAssociatedDeviceDiagnosticResult3(INT apIndex, wifi_associated_dev3_t **associated_dev_array, UINT *output_array_size)
 {
+	INT ret = RETURN_OK;
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	ret = rpi_getApAssociatedDeviceDiagnosticResult3(apIndex, associated_dev_array, output_array_size);
+	if(ret == RETURN_ERR)
+		printf("func[%s], apIndex[%d] ret[%d] associated_dev_array[%p] dev_cnt[%d]\n",
+				__FUNCTION__, apIndex, ret, *associated_dev_array, *output_array_size);
 
-	//Using different approach to get required WiFi Parameters from system available commands
-#if 0
-	FILE *f;
-	int read_flag=0, auth_temp=0, mac_temp=0,i=0;
-	char cmd[256], buf[2048];
-	char *param , *value, *line=NULL;
-	size_t len = 0;
-	ssize_t nread;
-	wifi_associated_dev3_t *dev=NULL;
-	*associated_dev_array = NULL;
-	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta | grep AUTHORIZED | wc -l" , apIndex);
-	_syscmd(cmd,buf,sizeof(buf));
-	*output_array_size = atoi(buf);
-
-	if (*output_array_size <= 0)
-			return RETURN_OK;
-
-	dev=(wifi_associated_dev3_t *) malloc(*output_array_size * sizeof(wifi_associated_dev3_t));
-	*associated_dev_array = dev;
-	sprintf(cmd, "hostapd_cli -p /var/run/hostapd%d all_sta > /tmp/connected_devices.txt" , apIndex);
-	_syscmd(cmd,buf,sizeof(buf));
-	f = fopen("/tmp/connected_devices.txt", "r");
-	if (f==NULL)
-	{
-			*output_array_size=0;
-			return RETURN_ERR;
-	}
-	while ((nread = getline(&line, &len, f)) != -1)
-	{
-			param = strtok(line,"=");
-			value = strtok(NULL,"=");
-
-			if( strcmp("flags",param) == 0 )
-			{
-					value[strlen(value)-1]='\0';
-					if(strstr (value,"AUTHORIZED") != NULL )
-					{
-							dev[auth_temp].cli_AuthenticationState = 1;
-							dev[auth_temp].cli_Active = 1;
-							auth_temp++;
-							read_flag=1;
-					}
-			}
-			if(read_flag==1)
-			{
-					if( strcmp("dot11RSNAStatsSTAAddress",param) == 0 )
-					{
-							value[strlen(value)-1]='\0';
-							sscanf(value, "%x:%x:%x:%x:%x:%x",
-											(unsigned int *)&dev[mac_temp].cli_MACAddress[0],
-											(unsigned int *)&dev[mac_temp].cli_MACAddress[1],
-											(unsigned int *)&dev[mac_temp].cli_MACAddress[2],
-											(unsigned int *)&dev[mac_temp].cli_MACAddress[3],
-											(unsigned int *)&dev[mac_temp].cli_MACAddress[4],
-											(unsigned int *)&dev[mac_temp].cli_MACAddress[5] );
-
-					}
-					else if( strcmp("rx_packets",param) == 0 )
-					{
-							sscanf(value, "%d", &(dev[mac_temp].cli_PacketsReceived));
-					}
-
-					else if( strcmp("tx_packets",param) == 0 )
-					{
-							sscanf(value, "%d", &(dev[mac_temp].cli_PacketsSent));						
-					}
-
-					else if( strcmp("rx_bytes",param) == 0 )
-					{
-							sscanf(value, "%d", &(dev[mac_temp].cli_BytesReceived));
-					}
-
-					else if( strcmp("tx_bytes",param) == 0 )
-					{
-							sscanf(value, "%d", &(dev[mac_temp].cli_BytesSent));		
-							mac_temp++;
-							read_flag=0;
-					}						
-			}
-	}
-
-	*output_array_size = auth_temp;
-	auth_temp=0;
-	mac_temp=0;
-	free(line);
-	fclose(f);
-#endif
-	if((apIndex == 0) || (apIndex == 1))
-	{
-	char interface_name[MAX_BUF_SIZE] = {0};
-	char wifi_status[MAX_BUF_SIZE] = {0};
-	char hostapdconf[MAX_BUF_SIZE] = {0};
-
-	wifi_associated_dev3_t *dev_array = NULL;
-	ULONG wifi_count = 0;
-
-	*associated_dev_array = NULL;
-	*output_array_size = 0;
-
-	printf("wifi_getApAssociatedDeviceDiagnosticResult3 apIndex = %d \n", apIndex);
-	//if(apIndex == 0 || apIndex == 1 || apIndex == 4 || apIndex == 5) // These are availble in RPI.
-	{
-		sprintf(hostapdconf, "/nvram/hostapd%d.conf", apIndex);
-
-		GetInterfaceName(interface_name, hostapdconf);
-
-		if(strlen(interface_name) > 1)
-		{
-			wifihal_interfacestatus(wifi_status,interface_name);
-			if(strcmp(wifi_status,"RUNNING") == 0)
-			{
-				wifihal_AssociatedDevicesstats3(apIndex,interface_name,&dev_array,&wifi_count);
-
-				*associated_dev_array = dev_array;
-				*output_array_size = wifi_count;		
-			}
-			else
-			{
-				*associated_dev_array = NULL;
-			}
-		}
-	}
-	}
-	else
-	{
-		if((apIndex >= 2) && (apIndex < 17))
-			*associated_dev_array = NULL;
-	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-	return RETURN_OK;
+	return ret;
 }
 
 /* getIPAddress function */
@@ -6514,7 +5997,7 @@ INT wifi_getApInactiveAssociatedDeviceDiagnosticResult(char *filename,wifi_disas
         int count = 0,maccount = 0,i = 0,wificlientindex = 0;
         FILE *fp = NULL;
         char path[1024] = {0},str[64] = {0},ipaddr[50] = {0},buf[512] = {0},cmd[1024] = {0},interface_name[10] = {0};
-        sprintf(buf,"cat %s | grep Station | sort | uniq | wc -l",filename);
+        sprintf(buf,"cat %s | grep dot11RSNAStatsSTAAddress | cut -d '=' -f2 | wc -l",filename);
         fp = popen(buf,"r");
         if(fp == NULL)
                 return RETURN_ERR;
@@ -6532,7 +6015,7 @@ INT wifi_getApInactiveAssociatedDeviceDiagnosticResult(char *filename,wifi_disas
         wifi_disassociation_details_t* pt = NULL;
         *w_disassoc_clients = (wifi_disassociation_details_t *) calloc (*output_array_size, sizeof(wifi_disassociation_details_t));
         memset(buf,0,sizeof(buf));
-        sprintf(buf,"cat %s | grep Station | cut -d ' ' -f2 | sort | uniq",filename);
+        sprintf(buf,"cat %s | grep dot11RSNAStatsSTAAddress | cut -d '=' -f2",filename);
         fp = popen(buf,"r");
         for(count = 0,pt=*w_disassoc_clients; count < maccount ; count++,pt++)
         {
