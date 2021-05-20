@@ -50,7 +50,7 @@ static int execute(char *command, char *result)
 {
     FILE *fp = NULL;
     char output[MAX_BUFFER_SIZE] = {0};
-    char *str = NULL;
+    char *str = NULL,*pos=NULL;
 
     fp = popen(command, "r");
     if(NULL == fp)
@@ -61,6 +61,9 @@ static int execute(char *command, char *result)
 
     /* only the first line of the output is of interest */
     fgets(output, sizeof(output)-1, fp);
+    if (NULL != (pos=strchr(output, '\n')) ) {
+        *pos = '\0';
+    }
     str = strstr(output, ":");
 
     if(NULL != str)
@@ -167,7 +170,7 @@ INT platform_hal_GetModelName(CHAR* pValue)
     {
         return RETURN_ERR;
     }
-    ret = execute("grep 'model name' /proc/cpuinfo", model);
+    ret = execute_cmd("grep 'MODEL_NAME' /etc/device.properties | cut -d '=' -f2", model);
     if(RETURN_OK != ret)
     {
         printf("\nError %s\n", __func__);
