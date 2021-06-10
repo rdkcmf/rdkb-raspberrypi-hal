@@ -97,6 +97,8 @@
     return RETURN_ERR; \
     }
 
+typedef unsigned long long  u64;
+
 //For 5g Alias Interfaces
 static BOOL priv_flag = TRUE;
 static BOOL pub_flag = TRUE;
@@ -6950,6 +6952,169 @@ void wifi_apAuthEvent_callback_register(wifi_apAuthEvent_callback callback_proc)
 INT wifi_getVAPTelemetry(UINT apIndex, wifi_VAPTelemetry_t *telemetry)
 {
 	return RETURN_OK;
+}
+
+void wifi_apDisassociatedDevice_callback_register(wifi_apDisassociatedDevice_callback callback_proc)
+{
+    // TODO Implement me!
+    return RETURN_OK;
+}
+
+INT wifi_pushRadioChannel2(INT radioIndex, UINT channel, UINT channel_width_MHz, UINT csa_beacon_count)
+{
+    // TODO Implement me!
+    return RETURN_OK;
+}
+
+INT wifi_getRadioChannels(INT radioIndex, wifi_channelMap_t *outputMap, INT outputMapSize)
+{
+    // TODO Implement me!
+    return RETURN_OK;
+}
+
+INT wifi_chan_eventRegister(wifi_chan_eventCB_t eventCb)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApMacAddressControlMode(INT apIndex, INT *output_filterMode)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_delApAclDevices(INT apIndex)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getSSIDNameStatus(INT apIndex, CHAR *output_string)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApChannel(INT apIndex,ULONG *output_ulong) 
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getNeighborReportActivation(UINT apIndex, BOOL *activate)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_setNeighborReportActivation(UINT apIndex, BOOL activate)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApAssociatedDeviceStats(
+        INT apIndex,
+        mac_address_t *clientMacAddress,
+        wifi_associated_dev_stats_t *associated_dev_stats,
+        u64 *handle)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApAssociatedDeviceRxStatsResult(INT radioIndex, mac_address_t *clientMacAddress, wifi_associated_dev_rate_info_rx_stats_t **stats_array, UINT *output_array_size, ULLONG *handle)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApAssociatedDeviceTxStatsResult(INT radioIndex, mac_address_t *clientMacAddress, wifi_associated_dev_rate_info_tx_stats_t **stats_array, UINT *output_array_size, ULLONG *handle)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApAssociatedDeviceDiagnosticResult2(INT apIndex,wifi_associated_dev2_t **associated_dev_array,UINT *output_array_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getRadioChannelStats(INT radioIndex,wifi_channelStats_t *input_output_channelStats_array,INT array_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_startNeighborScan(INT apIndex, wifi_neighborScanMode_t scan_mode, INT dwell_time, UINT chan_num, UINT *chan_list)
+{
+    // TODO Implement me!
+    return RETURN_OK;
+}
+    INT wifi_steering_clientRemove(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_clientMeasure(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_clientDisconnect(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac, wifi_disconnectType_t type, UINT reason)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_eventRegister(wifi_steering_eventCB_t event_cb)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_steering_eventUnregister(void)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+INT wifi_steering_setGroup(UINT steeringgroupIndex, wifi_steering_apConfig_t *cfg_2, wifi_steering_apConfig_t *cfg_5)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+INT wifi_steering_clientSet(UINT steeringgroupIndex, INT apIndex, mac_address_t client_mac, wifi_steering_clientConfig_t *config)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getNeighboringWiFiStatus(INT radio_index, wifi_neighbor_ap2_t **neighbor_ap_array, UINT *output_array_size)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_setBTMRequest(UINT apIndex, CHAR *peerMac, wifi_BTMRequest_t *request)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_setRMBeaconRequest(UINT apIndex, CHAR *peer, wifi_BeaconRequest_t *in_request, UCHAR *out_DialogToken)
+{
+    // TODO Implement me!
+    return RETURN_ERR;
+}
+
+INT wifi_getApInterworkingElement(INT apIndex, wifi_InterworkingElement_t *output_struct)
+{
+	//TODO
+	return RETURN_ERR;
 }
 
 #ifdef _WIFI_HAL_TEST_
