@@ -77,6 +77,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <stdbool.h>
 
 #include "ccsp_hal_ethsw.h" 
 
@@ -88,6 +92,7 @@
 #define  CcspHalEthSwTrace(msg)                     printf("%s - ", __FUNCTION__); printf msg;
 #define MAX_BUF_SIZE 1024
 #define MACADDRESS_SIZE 6
+#define ETH_WAN_INTERFACE  "erouter0"
 #define LM_ARP_ENTRY_FORMAT  "%63s %63s %63s %63s %17s %63s"
 
 /**********************************************************************
@@ -654,8 +659,6 @@ void GetInterfaceName(char *interface_name, char *conf_file)
                         interface_name[count] = output_string[count];
         interface_name[count]='\0';
 
-        fprintf(stderr,"Interface name %s \n", interface_name);
-
         pclose(fp);
 }
 /* CcspHalExtSw_getAssociatedDevice :  */
@@ -863,7 +866,7 @@ INT CcspHalExtSw_getEthWanEnable(BOOLEAN *enable)
 
 INT CcspHalExtSw_getEthWanPort(UINT *Port)
 {
-	*Port = 20;
+	*Port = 0;
 	return RETURN_OK;
 }
 
@@ -902,6 +905,39 @@ INT CcspHalExtSw_setEthWanEnable(BOOLEAN enable)
 
 INT CcspHalExtSw_setEthWanPort(UINT Port)
 {
-	Port = 20;
+	Port = 0;
 	return RETURN_OK;
+}
+
+bool rpiNet_isInterfaceLinkUp(const char *ifname)
+{
+	int  skfd;
+	struct ifreq intf;
+	bool isUp = FALSE;
+
+	if(ifname == NULL) {
+		return FALSE;
+	}
+
+	if ((skfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		return FALSE;
+	}
+
+	strcpy(intf.ifr_name, ifname);
+
+	if (ioctl(skfd, SIOCGIFFLAGS, &intf) == -1) {
+		isUp = 0;
+	} else {
+		isUp = (intf.ifr_flags & IFF_RUNNING) ? TRUE : FALSE;
+	}
+
+	close(skfd);
+	return isUp;
+}
+
+INT GWP_GetEthWanLinkStatus()
+{
+	INT status = 0;
+	status = rpiNet_isInterfaceLinkUp(ETH_WAN_INTERFACE) ? TRUE : FALSE;
+	return status;
 }
