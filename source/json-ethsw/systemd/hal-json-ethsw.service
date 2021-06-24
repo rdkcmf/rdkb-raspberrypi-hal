@@ -1,0 +1,13 @@
+[Unit]
+Description=Json server service
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/hal_json_ethsw
+ExecStop=/bin/sh -c 'echo 0 >> /tmp/Jsonserver_Restarted'
+Restart=always
+
+StandardOutput=syslog+console
+
+[Install]
+WantedBy=multi-user.target
