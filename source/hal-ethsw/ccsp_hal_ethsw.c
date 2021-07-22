@@ -95,6 +95,14 @@
 #define ETH_WAN_INTERFACE  "erouter0"
 #define LM_ARP_ENTRY_FORMAT  "%63s %63s %63s %63s %17s %63s"
 
+#if defined(FEATURE_RDKB_WAN_MANAGER)
+static pthread_t ethsw_tid;
+static int hal_init_done = 0;
+appCallBack ethWanCallbacks;
+#define  ETH_INITIALIZE  "/tmp/ethagent_initialized"
+#define  LINK_VALUE_SIZE  50
+#define  ETH_WAN_IFNAME   "eth0"
+#endif
 /**********************************************************************
                             MAIN ROUTINES
 **********************************************************************/
@@ -111,6 +119,106 @@ int is_interface_exists(const char *fname)
     }
         return 0;
 }
+#if defined(FEATURE_RDKB_WAN_MANAGER)
+void *ethsw_thread_main(void *context __attribute__((unused)))
+{
+   FILE *fp = NULL;
+   char command[128] = {0};
+   char* buff = NULL, *pLink;
+   char previousLinkDetected[10]="no";
+   int timeout = 0;
+   int file = 0;
+
+   buff = malloc(sizeof(char)*50);
+   if(buff == NULL)
+    {
+        return (void *) 1;
+    }
+
+   while(timeout != 180)
+    {
+       if (file == access(ETH_INITIALIZE, R_OK))
+       {
+            CcspHalEthSwTrace(("Eth agent initialized \n"));
+            break;
+       }
+       else
+       {
+           timeout = timeout+1;
+           sleep(1);
+       }
+    }
+
+   while(1)
+    {
+        memset(buff,0,sizeof(buff));
+        snprintf(command,128, "ethtool erouter0 | grep \"Link detected\" | cut -d ':' -f2 | cut -d ' ' -f2");
+        fp = popen(command, "r");
+          if (fp == NULL)
+          {
+                continue;
+          }
+          while (fgets(buff, LINK_VALUE_SIZE, fp) != NULL)
+          {
+                pLink = strchr(buff, '\n');
+                if(pLink)
+                    *pLink = '\0';
+          }
+          pclose(fp);
+        if (strcmp(buff, (const char *)previousLinkDetected))
+        {
+            if (strcmp(buff, "yes") == 0)
+	    {
+		CcspHalEthSwTrace(("send_link_event: Got Link UP Event\n"));
+                ethWanCallbacks.pGWP_act_EthWanLinkUP();    
+            }
+            else
+            {
+		 CcspHalEthSwTrace(("send_link_event: Got Link DOWN Event\n"));
+                 ethWanCallbacks.pGWP_act_EthWanLinkDown();   
+            }
+            memset(previousLinkDetected, 0, sizeof(previousLinkDetected));
+            strcpy((char *)previousLinkDetected, buff);
+        }
+        sleep(5);
+    }
+    if(buff != NULL)
+        free(buff);
+    return NULL;
+}
+
+void GWP_RegisterEthWan_Callback(appCallBack *obj) {
+    int rc;
+
+    if (obj == NULL) {
+        rc = RETURN_ERR;
+    } else {
+        ethWanCallbacks.pGWP_act_EthWanLinkUP = obj->pGWP_act_EthWanLinkUP;
+        ethWanCallbacks.pGWP_act_EthWanLinkDown = obj->pGWP_act_EthWanLinkDown;
+        rc = RETURN_OK;
+    }
+
+    return;
+}
+
+INT
+    GWP_GetEthWanInterfaceName
+(
+ unsigned char * Interface,
+ ULONG           maxSize
+ )
+{
+    //Maxsize param should be minimum 4charecters(eth0) including NULL charecter	
+    if( ( Interface == NULL ) || ( maxSize < ( strlen( ETH_WAN_INTERFACE ) + 1 ) ) )
+    {
+        printf("ERROR: Invalid argument. \n");
+        return RETURN_ERR;
+    }
+
+    snprintf(Interface, maxSize, "%s", ETH_WAN_IFNAME);
+    return RETURN_OK;
+}
+#endif
 
 /* CcspHalEthSwInit :  */
 /**
@@ -135,6 +243,25 @@ CcspHalEthSwInit
         void
     )
 {
+#if defined(FEATURE_RDKB_WAN_MANAGER)
+    int rc;
+
+    if (hal_init_done) {
+        return RETURN_OK;
+    }
+
+    // Initialize callback function pointers.
+    ethWanCallbacks.pGWP_act_EthWanLinkUP = NULL;
+    ethWanCallbacks.pGWP_act_EthWanLinkDown = NULL;
+
+    // Create thread to handle async events and callbacks.
+    rc = pthread_create(&ethsw_tid, NULL, ethsw_thread_main, NULL);
+    if (rc != 0) {
+        return RETURN_ERR;
+    }
+
+    hal_init_done = 1;
+#endif
     return  RETURN_OK;
 }
 
