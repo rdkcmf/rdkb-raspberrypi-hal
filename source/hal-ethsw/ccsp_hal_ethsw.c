@@ -209,7 +209,7 @@ INT
  )
 {
     //Maxsize param should be minimum 4charecters(eth0) including NULL charecter	
-    if( ( Interface == NULL ) || ( maxSize < ( strlen( ETH_WAN_INTERFACE ) + 1 ) ) )
+    if( ( Interface == NULL ) || ( maxSize < ( strlen( ETH_WAN_IFNAME ) + 1 ) ) )
     {
         printf("ERROR: Invalid argument. \n");
         return RETURN_ERR;
