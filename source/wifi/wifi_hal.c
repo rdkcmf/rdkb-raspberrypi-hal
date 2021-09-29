@@ -7117,6 +7117,12 @@ INT wifi_getApInterworkingElement(INT apIndex, wifi_InterworkingElement_t *outpu
 	return RETURN_ERR;
 }
 
+INT wifi_setRadioAutoChannelRefreshPeriod(INT radioIndex, ULONG seconds)
+{
+	//TODO
+    return RETURN_ERR; //Stub call for wifi_setRadioAutoChannelRefreshPeriod
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
