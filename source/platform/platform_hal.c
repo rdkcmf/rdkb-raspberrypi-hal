@@ -112,7 +112,8 @@ INT platform_hal_GetDeviceConfigStatus(CHAR *pValue) { strcpy(pValue, "Complete"
 INT platform_hal_GetTelnetEnable(BOOLEAN *pFlag) { *pFlag = FALSE; return RETURN_OK; }
 INT platform_hal_SetTelnetEnable(BOOLEAN Flag) { return RETURN_ERR; }
 INT platform_hal_GetSSHEnable(BOOLEAN *pFlag)
-{ 
+{
+#if 0       	
 #ifndef _64BIT_ARCH_SUPPORT_	
     char ssh_access[2] = { 0 };
     UtopiaContext ctx;
@@ -130,11 +131,13 @@ INT platform_hal_GetSSHEnable(BOOLEAN *pFlag)
     }
     *pFlag = atoi(ssh_access);
     Utopia_Free(&ctx, 0);
+#endif
 #endif    
     return RETURN_OK;
 }
 INT platform_hal_SetSSHEnable(BOOLEAN Flag)
 {
+#if 0
 #ifndef _64BIT_ARCH_SUPPORT_	
     char ssh_access[2] = { 0 };
     UtopiaContext ctx;
@@ -147,6 +150,7 @@ INT platform_hal_SetSSHEnable(BOOLEAN Flag)
     }
     Utopia_SetEvent(&ctx, Utopia_Event_Firewall_Restart);
     Utopia_Free(&ctx, 1);
+#endif    
 #endif    
     return RETURN_OK;
 }
