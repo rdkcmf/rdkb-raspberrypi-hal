@@ -250,10 +250,6 @@ CcspHalEthSwInit
         return RETURN_OK;
     }
 
-    // Initialize callback function pointers.
-    ethWanCallbacks.pGWP_act_EthWanLinkUP = NULL;
-    ethWanCallbacks.pGWP_act_EthWanLinkDown = NULL;
-
     // Create thread to handle async events and callbacks.
     rc = pthread_create(&ethsw_tid, NULL, ethsw_thread_main, NULL);
     if (rc != 0) {
