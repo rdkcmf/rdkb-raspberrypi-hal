@@ -85,6 +85,7 @@
 #define DEF_HOSTAPD_CONF_5 "/usr/ccsp/wifi/hostapd5.conf"
 #define DEF_RADIO_PARAM_CONF "/usr/ccsp/wifi/radio_param_def.cfg"
 #define LM_DHCP_CLIENT_FORMAT   "%63d %17s %63s %63s"
+#define CONFIG_PREFIX "/nvram/hostapd"
 
 #define POINTER_ASSERT(expr) if(!(expr)) { \
         printf("%s %d, Invalid parameter error!!!\n", __FUNCTION__,__LINE__); \
@@ -104,6 +105,93 @@ static BOOL priv_flag = TRUE;
 static BOOL pub_flag = TRUE;
 static BOOL Radio_flag = TRUE;
 //wifi_setApBeaconRate(1, beaconRate);
+
+struct hostapd_params
+{
+    char * name;
+    char * value;
+};
+static int rpi_hostapdRead(char *conf_file, char *param, char *output, int output_size)
+{
+    char cmd[MAX_CMD_SIZE]={'\0'};
+    char buf[MAX_BUF_SIZE]={'\0'};
+    int ret = 0;
+
+    sprintf(cmd, "cat %s | grep \"^%s=\" | cut -d \"=\"  -f 2 | head -n1 | tr -d \"\\n\"", conf_file, param);
+    ret = _syscmd(cmd, buf, sizeof(buf));
+    if ((ret != 0) && (strlen(buf) == 0))
+        return -1;
+    snprintf(output, output_size, "%s", buf);
+
+    return 0;
+}
+
+static int rpi_hostapdWrite(char *conf_file, struct hostapd_params *list, int item_count)
+{
+    char cmd[MAX_CMD_SIZE]={'\0'};
+    char buf[MAX_BUF_SIZE]={'\0'};
+
+    for(int i=0;i<item_count;i++)
+    {
+        rpi_hostapdRead(conf_file, list[i].name, buf, sizeof(buf));
+        if (strlen(buf) == 0) //Insert
+            snprintf(cmd, sizeof(cmd), "echo \"%s=%s\" >> %s", list[i].name, list[i].value, conf_file);
+        else //Update
+            snprintf(cmd, sizeof(cmd), "sed -i \"s/^%s=.*/%s=%s/\" %s", list[i].name, list[i].name, list[i].value, conf_file);
+        if(_syscmd(cmd, buf, sizeof(buf)))
+            return -1;
+    }
+
+    return 0;
+}
+static int rpi_hostapdProcessUpdate(int apIndex, struct hostapd_params *list, int item_count)
+{
+    char cmd[MAX_CMD_SIZE]="", output[32]="",ifname[32]="",conf_file[32]="";
+    FILE *fp;
+    int i;
+    sprintf(conf_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+    GetInterfaceName(ifname,conf_file);
+    //NOTE RELOAD should be done in ApplySSIDSettings
+
+    for(i=0; i<item_count; i++, list++)
+    {
+        snprintf(cmd, sizeof(cmd), "hostapd_cli -p/var/run/hostapd%d -i%s SET %s %s", apIndex,ifname, list->name, list->value);
+	printf("%s:%s\n",__FUNCTION__,cmd);
+        if((fp = popen(cmd, "r"))==NULL)
+        {
+            perror("popen failed");
+            return -1;
+        }
+        if(!fgets(output, sizeof(output), fp) || strncmp(output, "OK", 2))
+        {
+            perror("fgets failed");
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static int rpi_reloadAp(int apIndex)
+{
+    char cmd[MAX_CMD_SIZE]="";
+    char buf[MAX_BUF_SIZE]="",ifname[32]="",conf_file[32]="";
+    sprintf(conf_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+    GetInterfaceName(ifname,conf_file);
+
+    snprintf(cmd, sizeof(cmd), "hostapd_cli -p/var/run/hostapd%d -i%s reload", apIndex,ifname);
+    if (_syscmd(cmd, buf, sizeof(buf)) == RETURN_ERR)
+        return RETURN_ERR;
+
+    snprintf(cmd, sizeof(cmd), "hostapd_cli -p/var/run/hostapd%d -i%s disable", apIndex,ifname);
+    if (_syscmd(cmd, buf, sizeof(buf)) == RETURN_ERR)
+        return RETURN_ERR;
+
+    snprintf(cmd, sizeof(cmd), "hostapd_cli -p/var/run/hostapd%d -i%s enable", apIndex,ifname);
+    if (_syscmd(cmd, buf, sizeof(buf)) == RETURN_ERR)
+        return RETURN_ERR;
+     return RETURN_OK;
+}
+	
 
 //For Getting Current Interface Name from corresponding hostapd configuration
 void GetInterfaceName(char *interface_name, char *conf_file)
@@ -5210,9 +5298,14 @@ INT wifi_setApRetryLimit(INT apIndex, UINT number)
 //Indicates whether this access point supports WiFi Multimedia (WMM) Access Categories (AC).
 INT wifi_getApWMMCapability(INT apIndex, BOOL *output)
 {
+	char buf[32] = {0};
+	char config_file[MAX_BUF_SIZE] = {0};
 	if(!output)
 		return RETURN_ERR;
-	*output=TRUE;	
+
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdRead(config_file, "wmm_enabled", buf, sizeof(buf));
+	*output = (strncmp("1",buf,1) == 0);
 	return RETURN_OK;	
 }
 
@@ -5220,9 +5313,14 @@ INT wifi_getApWMMCapability(INT apIndex, BOOL *output)
 INT wifi_getApUAPSDCapability(INT apIndex, BOOL *output)
 {
 	//get the running status from driver
+	char buf[32] = {0};
+	char config_file[MAX_BUF_SIZE] = {0};
 	if(!output)
 		return RETURN_ERR;
-	*output=TRUE;	
+
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdRead(config_file, "uapsd_advertisement_enabled", buf, sizeof(buf));
+	*output = (strncmp("1",buf,1) == 0);
 	return RETURN_OK;
 }
 
@@ -5230,34 +5328,60 @@ INT wifi_getApUAPSDCapability(INT apIndex, BOOL *output)
 INT wifi_getApWmmEnable(INT apIndex, BOOL *output)
 {
 	//get the running status from driver
+	char buf[32] = {0};
+	char config_file[MAX_BUF_SIZE] = {0};
 	if(!output)
 		return RETURN_ERR;
-	*output=TRUE;	
+
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdRead(config_file, "wmm_enabled", buf, sizeof(buf));
+	*output = (strncmp("1",buf,1) == 0);
 	return RETURN_OK;
 }
 
 // enables/disables WMM on the hardwawre for this AP.  enable==1, disable == 0    
 INT wifi_setApWmmEnable(INT apIndex, BOOL enable)
 {
-	//Save config and apply instantly. 
-	return RETURN_ERR;
+	printf("%s:%d\n",__FUNCTION__,enable);
+	char config_file[MAX_BUF_SIZE] = {0};
+	struct hostapd_params list;
+
+	list.name = "wmm_enabled";
+	list.value = enable?"1":"0";
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdWrite(config_file, &list, 1);
+	rpi_hostapdProcessUpdate(apIndex, &list, 1);
+        rpi_reloadAp(apIndex);
+	return RETURN_OK;
 }
 
 //Whether U-APSD support is currently enabled. When enabled, this is indicated in beacon frames. Note: U-APSD can only be enabled if WMM is also enabled.
 INT wifi_getApWmmUapsdEnable(INT apIndex, BOOL *output)
 {
-	//get the running status from driver
-	if(!output)
-		return RETURN_ERR;
-	*output=TRUE;	
-	return RETURN_OK;
+	char buf[32] = {0};
+        char config_file[MAX_BUF_SIZE] = {0};
+        if(!output)
+                return RETURN_ERR;
+
+        sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+        rpi_hostapdRead(config_file, "uapsd_advertisement_enabled", buf, sizeof(buf));
+        *output = (strncmp("1",buf,1) == 0);
+        return RETURN_OK;
 }
 
 // enables/disables Automatic Power Save Delivery on the hardwarwe for this AP
 INT wifi_setApWmmUapsdEnable(INT apIndex, BOOL enable)
 {
-	//save config and apply instantly. 
-	return RETURN_ERR;
+	char config_file[MAX_BUF_SIZE] = {0};
+        struct hostapd_params list;
+
+        list.name = "uapsd_advertisement_enabled";
+        list.value = enable?"1":"0";
+        sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+        rpi_hostapdWrite(config_file, &list, 1);
+	rpi_hostapdProcessUpdate(apIndex, &list, 1);
+        rpi_reloadAp(apIndex);
+        return RETURN_OK;
 }   
 
 // Sets the WMM ACK polity on the hardware. AckPolicy false means do not acknowledge, true means acknowledge
@@ -5270,17 +5394,42 @@ INT wifi_setApWmmOgAckPolicy(INT apIndex, INT class, BOOL ackPolicy)  //RDKB
 //Enables or disables device isolation.	A value of true means that the devices connected to the Access Point are isolated from all other devices within the home network (as is typically the case for a Wireless Hotspot).	
 INT wifi_getApIsolationEnable(INT apIndex, BOOL *output)
 {
-	//get the running status from driver
-	if(!output)
+	char output_val[16]={'\0'};
+	char config_file[MAX_BUF_SIZE] = {0};
+
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if (!output)
 		return RETURN_ERR;
-	*output=TRUE;	
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdRead(config_file, "ap_isolate", output_val, sizeof(output_val));
+
+	if( strcmp(output_val,"1") == 0 )
+		*output = TRUE;
+	else
+		*output = FALSE;
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);  	
 	return RETURN_OK;
 }
 	
 INT wifi_setApIsolationEnable(INT apIndex, BOOL enable)
 {
-	//store the config, apply instantly
-	Radio_flag = TRUE; // for AutoChannel - store previous value of radio channel ..if not set,previous storage value is not expected behaviour.....Need to fix .
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	char string[MAX_BUF_SIZE]={'\0'};
+	char config_file[MAX_BUF_SIZE] = {0};
+	struct hostapd_params params;
+
+	if(enable == TRUE)
+		strcpy(string,"1");
+	else
+		strcpy(string,"0");
+
+	params.name = "ap_isolate";
+	params.value = string;
+
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdWrite(config_file,&params,1);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+
 	return RETURN_OK;
 }
 
@@ -6499,13 +6648,40 @@ INT wifi_getApSecurityWpaRekeyInterval(INT apIndex, INT *output_int)
    return RETURN_OK;
 }
 
-//To-do
 INT wifi_getApSecurityMFPConfig(INT apIndex, CHAR *output_string)
 {
+	char buf[MAX_BUF_SIZE] = {0};
+	char config_file[MAX_BUF_SIZE] = {0};
+
+	snprintf(config_file, sizeof(config_file), "%s%d.conf", CONFIG_PREFIX, apIndex);
+	rpi_hostapdRead(config_file, "ieee80211w", buf, sizeof(buf));
+	if(strcmp(buf,"1") == 0)
+		strcpy(output_string,"Optional");
+	else if(strcmp(buf,"0") == 0)
+		strcpy(output_string,"Disabled");
+	else if(strcmp(buf,"2") == 0)
+		strcpy(output_string,"Required");
 	return RETURN_OK;
 }
 INT wifi_setApSecurityMFPConfig(INT apIndex, CHAR *MfpConfig)
 {
+	printf("%s:%s\n",__FUNCTION__,MfpConfig);
+	char config_file[MAX_BUF_SIZE] = {0};
+	char string[MAX_BUF_SIZE] = {0};
+	struct hostapd_params list;
+	if(strcmp(MfpConfig,"Disabled") == 0)
+		strcpy(string,"0");
+	else if(strcmp(MfpConfig,"Required") == 0)
+		strcpy(string,"2");
+	else if(strcmp(MfpConfig,"Optional") == 0)
+		strcpy(string,"1");
+
+	list.name = "ieee80211w";
+	list.value = string;
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdWrite(config_file, &list, 1);
+	rpi_hostapdProcessUpdate(apIndex, &list, 1);
+	rpi_reloadAp(apIndex);
 	return RETURN_OK;
 }
 INT wifi_getRadioAutoChannelEnable(INT radioIndex, BOOL *output_bool)
@@ -6933,11 +7109,28 @@ INT wifi_getRadioPercentageTransmitPower(INT radioIndex, ULONG *output_ulong)
 }
 INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
 {
-        return RETURN_OK;
+	printf("%s:%d:%d\n",__FUNCTION__,activate,apIndex);
+	char config_file[MAX_BUF_SIZE] = {0};
+	struct hostapd_params list;
+
+	list.name = "bss_transition";
+	list.value = activate?"1":"0";
+	snprintf(config_file, sizeof(config_file), "%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdWrite(config_file, &list, 1);
+	rpi_hostapdProcessUpdate(apIndex, &list, 1);
+        rpi_reloadAp(apIndex);
+	return RETURN_OK;
 }
 INT wifi_getBSSTransitionActivation(UINT apIndex, BOOL *activate)
 {
-        return RETURN_ERR;
+	char buf[MAX_BUF_SIZE] = {0};
+	char config_file[MAX_BUF_SIZE] = {0};
+
+	snprintf(config_file, sizeof(config_file), "%s%d.conf", CONFIG_PREFIX, apIndex);
+	rpi_hostapdRead(config_file, "bss_transition", buf, sizeof(buf));
+	*activate = (strncmp("1",buf,1) == 0);
+
+	return RETURN_OK;
 }
 wifi_anqpStartReceivingTestFrame()
 {
@@ -7004,14 +7197,28 @@ INT wifi_getApChannel(INT apIndex,ULONG *output_ulong)
 
 INT wifi_getNeighborReportActivation(UINT apIndex, BOOL *activate)
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+    char buf[32] = {0};
+    char config_file[MAX_BUF_SIZE] = {0};
+
+    sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+    rpi_hostapdRead(config_file, "rrm_neighbor_report", buf, sizeof(buf));
+    *activate = (strncmp("1",buf,1) == 0);
+    return RETURN_OK;
 }
 
 INT wifi_setNeighborReportActivation(UINT apIndex, BOOL activate)
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+    printf("%s:%d\n",__FUNCTION__,activate);
+    char config_file[MAX_BUF_SIZE] = {0};
+    struct hostapd_params list;
+
+    list.name = "rrm_neighbor_report";
+    list.value = activate?"1":"0";
+    sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+    rpi_hostapdWrite(config_file, &list, 1);
+    rpi_hostapdProcessUpdate(apIndex, &list, 1);
+    rpi_reloadAp(apIndex);
+    return RETURN_OK;
 }
 
 INT wifi_getApAssociatedDeviceStats(
