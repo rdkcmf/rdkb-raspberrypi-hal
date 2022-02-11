@@ -86,6 +86,7 @@
 #define DEF_RADIO_PARAM_CONF "/usr/ccsp/wifi/radio_param_def.cfg"
 #define LM_DHCP_CLIENT_FORMAT   "%63d %17s %63s %63s"
 #define CONFIG_PREFIX "/nvram/hostapd"
+#define ACL_PREFIX "/tmp/hostapd-acl"
 
 #define POINTER_ASSERT(expr) if(!(expr)) { \
         printf("%s %d, Invalid parameter error!!!\n", __FUNCTION__,__LINE__); \
@@ -7173,26 +7174,72 @@ INT wifi_chan_eventRegister(wifi_chan_eventCB_t eventCb)
 
 INT wifi_getApMacAddressControlMode(INT apIndex, INT *output_filterMode)
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+	char config_file[MAX_BUF_SIZE] = {0};
+	char buf[32] = {0};
+
+	if (!output_filterMode)
+		return RETURN_ERR;
+
+	sprintf(config_file, "%s%d.conf", CONFIG_PREFIX, apIndex);
+	rpi_hostapdRead(config_file, "macaddr_acl", buf, sizeof(buf));
+	*output_filterMode = atoi(buf);
+
+	return RETURN_OK;
 }
 
 INT wifi_delApAclDevices(INT apIndex)
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+	char fname[100];
+	int fd;
+	snprintf(fname, sizeof(fname), "%s%d", ACL_PREFIX, apIndex);
+	fd = fopen(fname, "w");
+	if (!fd) {
+		return RETURN_ERR;
+	}
+	fclose(fd);
+	return RETURN_OK;
 }
 
 INT wifi_getSSIDNameStatus(INT apIndex, CHAR *output_string)
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+	char cmd[MAX_CMD_SIZE] = {0}, buf[MAX_BUF_SIZE] = {0};
+	char conf_file[32]="",interface_name[32]="";
+
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if (NULL == output_string)
+		return RETURN_ERR;
+	sprintf(conf_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	GetInterfaceName(interface_name,conf_file);	
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -p/var/run/hosatpd%d -i%s get_config | grep ^ssid | cut -d '=' -f2 | tr -d '\n'", apIndex,interface_name);
+	_syscmd(cmd, buf, sizeof(buf));
+
+	//size of SSID name restricted to value less than 32 bytes
+	snprintf(output_string, 32, "%s", buf);
+	WIFI_ENTRY_EXIT_DEBUG("Exit %s:%d\n",__func__, __LINE__);
+
+	return RETURN_OK;
 }
 
 INT wifi_getApChannel(INT apIndex,ULONG *output_ulong) 
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+	char cmd[1024] = {0}, buf[5] = {0};
+	char interface_name[50] = {0},conf_file[32]="";
+
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if (NULL == output_ulong)
+		return RETURN_ERR;
+
+	sprintf(conf_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+        GetInterfaceName(interface_name,conf_file);
+	snprintf(cmd, sizeof(cmd), "iw dev %s info |grep channel | cut -d ' ' -f2",interface_name);
+	_syscmd(cmd,buf,sizeof(buf));
+	*output_ulong = (strlen(buf) >= 1)? atol(buf): 0;
+	if (*output_ulong == 0) {
+		return RETURN_ERR;
+	}
+
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
 }
 
 INT wifi_getNeighborReportActivation(UINT apIndex, BOOL *activate)
@@ -7227,8 +7274,48 @@ INT wifi_getApAssociatedDeviceStats(
         wifi_associated_dev_stats_t *associated_dev_stats,
         u64 *handle)
 {
-    // TODO Implement me!
-    return RETURN_ERR;
+	wifi_associated_dev_stats_t *dev_stats = associated_dev_stats;
+	char interface_name[50] = {0},conf_file[32]="";
+	char cmd[1024] =  {0};
+	char mac_str[18] = {0};
+	char *key = NULL;
+	char *val = NULL;
+	FILE *f = NULL;
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read = 0;
+
+	sprintf(conf_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	GetInterfaceName(interface_name,conf_file);	
+
+	sprintf(mac_str, "%x:%x:%x:%x:%x:%x", (*clientMacAddress)[0],(*clientMacAddress)[1],(*clientMacAddress)[2],(*clientMacAddress)[3],(*clientMacAddress)[4],(*clientMacAddress)[5]);
+	sprintf(cmd,"iw dev %s station get %s | grep 'rx\\|tx' | tr -d '\t'", interface_name, mac_str);
+	if((f = popen(cmd, "r")) == NULL) {
+		wifi_dbg_printf("%s: popen %s error\n", __func__, cmd);
+		return RETURN_ERR;
+	}
+	while ((read = getline(&line, &len, f))  != -1) {
+		key = strtok(line,":");
+		val = strtok(NULL,":");
+
+		if(!strncmp(key,"rx bytes",8))
+			sscanf(val, "%llu", &dev_stats->cli_rx_bytes);
+		if(!strncmp(key,"tx bytes",8))
+			sscanf(val, "%llu", &dev_stats->cli_tx_bytes);
+		if(!strncmp(key,"rx packets",10))
+			sscanf(val, "%llu", &dev_stats->cli_tx_frames);
+		if(!strncmp(key,"tx packets",10))
+			sscanf(val, "%llu", &dev_stats->cli_tx_frames);
+		if(!strncmp(key,"tx retries",10))
+			sscanf(val, "%llu", &dev_stats->cli_tx_retries);
+		if(!strncmp(key,"tx failed",9))
+			sscanf(val, "%llu", &dev_stats->cli_tx_errors);
+		if(!strncmp(key,"rx drop misc",13))
+			sscanf(val, "%llu", &dev_stats->cli_rx_errors);
+	}
+	free(line);
+	pclose(f);
+	return RETURN_OK;
 }
 
 INT wifi_getApAssociatedDeviceRxStatsResult(INT radioIndex, mac_address_t *clientMacAddress, wifi_associated_dev_rate_info_rx_stats_t **stats_array, UINT *output_array_size, ULLONG *handle)
