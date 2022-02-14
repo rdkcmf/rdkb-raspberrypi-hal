@@ -5437,17 +5437,34 @@ INT wifi_setApIsolationEnable(INT apIndex, BOOL enable)
 //The maximum number of devices that can simultaneously be connected to the access point. A value of 0 means that there is no specific limit.			
 INT wifi_getApMaxAssociatedDevices(INT apIndex, UINT *output_uint)
 {
-	//get the running status from driver
-	if(!output_uint)
-		return RETURN_ERR;
-	*output_uint=64;	
+	char output_val[16]={'\0'};
+	char config_file[MAX_BUF_SIZE] = {0};
+
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdRead(config_file, "max_num_sta", output_val, sizeof(output_val));
+	*output_uint=atol(output_val);
 	return RETURN_OK;
 }
 
 INT wifi_setApMaxAssociatedDevices(INT apIndex, UINT number)
 {
-	//store to wifi config, apply instantly
-	return RETURN_ERR;
+	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	char string[MAX_BUF_SIZE]={'\0'};
+	char config_file[MAX_BUF_SIZE] = {0};
+	struct hostapd_params params;
+
+	snprintf(string,sizeof(string),"%ld",number);
+
+	params.name = "max_num_sta";
+	params.value = string;
+
+	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+	rpi_hostapdWrite(config_file,&params,1);
+	rpi_hostapdProcessUpdate(apIndex, &params, 1);
+	rpi_reloadAp(apIndex);
+	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	return RETURN_OK;
 }
 
 //The HighWatermarkThreshold value that is lesser than or equal to MaxAssociatedDevices. Setting this parameter does not actually limit the number of clients that can associate with this access point as that is controlled by MaxAssociatedDevices.	MaxAssociatedDevices or 50. The default value of this parameter should be equal to MaxAssociatedDevices. In case MaxAssociatedDevices is 0 (zero), the default value of this parameter should be 50. A value of 0 means that there is no specific limit and Watermark calculation algorithm should be turned off.			
