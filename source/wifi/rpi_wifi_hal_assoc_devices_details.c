@@ -627,3 +627,59 @@ int rpi_getApAssociatedDeviceDiagnosticResult3(int apIndex, wifi_associated_dev3
         return ret;
 }
 
+/**
+* @brief returns the MAC address of devices associated with this Access point.
+*
+*
+* @param[in]   apIndex              Access Point index
+* @param[in]   assocDevicesMacLen   Length of buffer passed down
+* @param[out]  Mac                  MAC Addresses of station devices (Comma-separated list of strings), to be returned.
+*
+* @return The status of the operation
+*
+*/
+
+INT rpi_WiFiAPAssociatedDevicesGet(INT apIndex,char *mac,int maclen)
+{
+        printf("%s Enter\n", __FUNCTION__);
+        char buf[512] = {0},ifname[32] = {0},cmd[512] = {0},config_file[32]={0},data_buf[64]={0};
+        int client_count = 0,ass_cnt = 0;
+
+        /* getting the wireless interface name*/
+        sprintf(config_file,"/nvram/hostapd%d.conf",apIndex);
+        GetInterfaceName(ifname,config_file);
+        /* getting the associated clients count*/
+        snprintf(cmd,sizeof(cmd),"iw dev %s station dump | grep Station | cut -d ' ' -f2 | wc -l",ifname);
+        if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+        {
+                printf("%s No associated list found :%s \n",__FUNCTION__,buf);
+                return RETURN_ERR;
+        }
+        client_count = atoi(buf);
+        memset(cmd,0,sizeof(cmd));
+        memset(buf,0,sizeof(buf));
+        for (ass_cnt = 0; ass_cnt < client_count; ++ass_cnt)
+        {
+                snprintf(cmd,sizeof(cmd),"iw dev %s station dump | grep Station | cut -d ' ' -f2 | sed '%dq;d'",ifname,ass_cnt+1);
+                if(_syscmd(cmd,buf,sizeof(buf)) == RETURN_ERR)
+		{
+                        printf("%s No associated device MAC lists found  \n",__FUNCTION__);
+                        return RETURN_ERR;
+                }
+                rpi_adjusting_the_stringsize(buf,data_buf);
+                strncat(mac,data_buf,maclen);
+                strncat(mac,",",maclen);
+        }
+        if (strlen(mac)> 0)
+        {
+                mac[strlen(mac) - 1] = '\0'; /*removing the last comma*/
+        }
+        else
+        {
+                printf("%s, No Devices connected to accesspoint %s \n", __FUNCTION__, ifname);
+                return RETURN_ERR;
+        }
+        printf("%s Exit \n", __FUNCTION__);
+        return RETURN_OK;
+}
+

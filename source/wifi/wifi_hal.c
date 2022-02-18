@@ -7434,6 +7434,16 @@ INT wifi_setRadioAutoChannelRefreshPeriod(INT radioIndex, ULONG seconds)
     return RETURN_ERR; //Stub call for wifi_setRadioAutoChannelRefreshPeriod
 }
 
+INT wifi_getApAssociatedDevice(INT apIndex, CHAR *output_buf, INT output_buf_size)
+{
+        WIFI_ENTRY_EXIT_DEBUG("Enter %s:%d\n",__func__, __LINE__);
+        memset(output_buf, 0, output_buf_size);
+        if(rpi_WiFiAPAssociatedDevicesGet(apIndex, output_buf, output_buf_size ) != RETURN_OK)
+                return RETURN_ERR;
+        WIFI_ENTRY_EXIT_DEBUG("Exit %s:%d\n",__func__, __LINE__);
+        return RETURN_OK;
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
