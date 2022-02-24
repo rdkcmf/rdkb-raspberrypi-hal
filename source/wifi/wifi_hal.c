@@ -52,6 +52,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "wifi_hal.h"
+#include "wifi_hal_rpi.h"
 
 #ifndef AP_PREFIX
 #define AP_PREFIX	"ath"
@@ -85,7 +86,6 @@
 #define DEF_HOSTAPD_CONF_5 "/usr/ccsp/wifi/hostapd5.conf"
 #define DEF_RADIO_PARAM_CONF "/usr/ccsp/wifi/radio_param_def.cfg"
 #define LM_DHCP_CLIENT_FORMAT   "%63d %17s %63s %63s"
-#define CONFIG_PREFIX "/nvram/hostapd"
 #define ACL_PREFIX "/tmp/hostapd-acl"
 
 #define POINTER_ASSERT(expr) if(!(expr)) { \
@@ -3399,13 +3399,19 @@ INT wifi_getSSIDEnable(INT ssidIndex, BOOL *output_bool) //Tr181
 {
 	if (NULL == output_bool) 
 		return RETURN_ERR;
-	return wifi_getApEnable(ssidIndex, output_bool);
+	if((ssidIndex == 0) || (ssidIndex == 1) || (ssidIndex == 4) || (ssidIndex == 5))
+		return wifi_getApEnable(ssidIndex, output_bool);
+	else
+		*output_bool = 0;
+	return RETURN_OK;
 }
 
 //Set SSID enable configuration parameters
 INT wifi_setSSIDEnable(INT ssidIndex, BOOL enable) //Tr181
 {
-	return wifi_setApEnable(ssidIndex, enable);
+	if((ssidIndex == 0) || (ssidIndex == 1) || (ssidIndex == 4) || (ssidIndex == 5))
+		return wifi_setApEnable(ssidIndex, enable);
+	return RETURN_OK;
 }
 
 //Get the SSID enable status
@@ -3415,6 +3421,8 @@ INT wifi_getSSIDStatus(INT ssidIndex, CHAR *output_string) //Tr181
 	char cmd[MAX_CMD_SIZE]={0};
 	char buf[MAX_BUF_SIZE]={0};
 	BOOL output_bool;
+	if((ssidIndex == 0) || (ssidIndex == 1) || (ssidIndex == 4) || (ssidIndex == 5))
+	{
 	if (NULL == output_string)
 		return RETURN_ERR;
 	else
@@ -3426,7 +3434,9 @@ INT wifi_getSSIDStatus(INT ssidIndex, CHAR *output_string) //Tr181
 		snprintf(output_string, 32, "Enabled");
 	else
 		snprintf(output_string, 32, "Disabled");
-
+	}
+	else
+		snprintf(output_string, 32, "Disabled");
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
@@ -3459,13 +3469,16 @@ INT wifi_getApWpaSecurityMode  (INT apIndex, CHAR *output_string)
     }    
     memset (&params, 0, sizeof(struct params));
     memset (&params, 0, sizeof(struct params));
+    if((apIndex == 0) || (apIndex == 1))
+    {
     strncpy (params.name, "wpa", strlen("wpa"));
     wifi_hostapdRead(apIndex, &params, output_string);
     if (strlen(output_string) > 0)   
     {    
         return RETURN_OK;
+    }
     }    
-   return RETURN_ERR;
+   return RETURN_OK;
 }
 
 // Outputs a 32 byte or less string indicating the SSID name.  Sring buffer must be preallocated by the caller.
@@ -3474,13 +3487,14 @@ INT wifi_getSSIDName(INT apIndex, CHAR *output)
     struct params params={"ssid",""};
     if (NULL == output) 
         return RETURN_ERR;
-    
+    if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+    { 
     wifi_hostapdRead(apIndex,&params,output);
     wifi_dbg_printf("\n[%s]: SSID Name is : %s",__func__,output); 
-    if(output==NULL)
-        return RETURN_ERR;
+    }
     else
-        return RETURN_OK;
+	    sprintf(output,"RPI_RDKB-AP%d",apIndex);
+    return RETURN_OK;
 
 }
         
@@ -3488,6 +3502,8 @@ INT wifi_getSSIDName(INT apIndex, CHAR *output)
 INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
 {
   WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+  if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+  {
   char str[MAX_BUF_SIZE]={'\0'};
   char cmd[MAX_CMD_SIZE]={'\0'},xfinity_wifi[5] = {0};
   char *ch;
@@ -3518,6 +3534,7 @@ INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
   else
         printf("Invalid Index Number \n");
   }
+  }
   WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
   return RETURN_OK;
 }
@@ -3526,6 +3543,8 @@ INT wifi_setSSIDName(INT apIndex, CHAR *ssid_string)
 INT wifi_getBaseBSSID(INT ssidIndex, CHAR *output_string)	//RDKB
 {
         WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if((ssidIndex == 0) || (ssidIndex == 1) || (ssidIndex == 4) || (ssidIndex == 5))
+	{	
         char cmd[MAX_CMD_SIZE]={0};
         char str[MAX_BUF_SIZE]={'\0'};
         char *ch={'\0'};
@@ -3573,6 +3592,7 @@ INT wifi_getBaseBSSID(INT ssidIndex, CHAR *output_string)	//RDKB
             output_string[17] = 0;
             printf("\n%s\n",output_string);
         }
+	}
         WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }
@@ -4220,12 +4240,13 @@ INT wifi_getApBeaconType(INT apIndex, CHAR *output_string)
     if (NULL == output_string)
             return RETURN_ERR;
 
-    
+    if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+    { 
     wifi_hostapdRead(apIndex,&params,output_string);
     wifi_dbg_printf("\n%s: output_string=%s\n",__func__,output_string);
-    if (NULL == output_string) 
-        return RETURN_ERR;
-    
+    }
+    else
+	    strcpy(output_string,"None");
     return RETURN_OK;
 
 }
@@ -4239,15 +4260,18 @@ INT wifi_setApBeaconType(INT apIndex, CHAR *beaconTypeString)
 	if (NULL == beaconTypeString)
 		return RETURN_ERR;
 	printf("\nbeaconTypeString=%s",beaconTypeString);
-	strncpy(params.value,beaconTypeString,strlen(beaconTypeString));
-	memset(&list,0,sizeof(list));
-	if(RETURN_ERR == list_add_param(&list,params))
-	{
-		return RETURN_ERR;
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+	{ 
+		strncpy(params.value,beaconTypeString,strlen(beaconTypeString));
+		memset(&list,0,sizeof(list));
+		if(RETURN_ERR == list_add_param(&list,params))
+		{
+			return RETURN_ERR;
+		}
+		wifi_hostapdWrite(apIndex,&list);
+		list_free_param(&list);
+		Dynamically_Updated_Security_Encryption_Modes_Hostapd_Process(apIndex,"Security_mode",beaconTypeString);
 	}
-	wifi_hostapdWrite(apIndex,&list);
-	list_free_param(&list);
-	Dynamically_Updated_Security_Encryption_Modes_Hostapd_Process(apIndex,"Security_mode",beaconTypeString);
 	//save the beaconTypeString to wifi config and hostapd config file. Wait for wifi reset or hostapd restart to apply
 	return RETURN_OK;
 }
@@ -4302,6 +4326,8 @@ INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 	if (NULL == output_string)
 		return RETURN_ERR;
 
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	memset(buf,'\0',32);
 	wifi_hostapdRead(apIndex,&beacon,buf);
 
@@ -4327,6 +4353,7 @@ INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 		strncpy(output_string,"AESEncryption", strlen("AESEncryption"));
 	else if(strcmp(output_string,"TKIP CCMP") == 0)
 		strncpy(output_string,"TKIPandAESEncryption", strlen("TKIPandAESEncryption"));
+	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
@@ -4481,7 +4508,9 @@ INT wifi_getApBasicAuthenticationMode(INT apIndex, CHAR *authMode)
 			}
 		}
 	}
-return RETURN_OK;
+	else
+		strcpy(authMode,"None");
+	return RETURN_OK;
 }
 
 // Outputs the number of stations associated per AP
@@ -5190,10 +5219,7 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 	}
 	else
 	{
-		if((apIndex > 5) && (apIndex < 17))
-			return RETURN_ERR;
-		else
-			return RETURN_OK;
+		*output_bool = 0;
 	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
@@ -5243,9 +5269,9 @@ INT wifi_getApSsidAdvertisementEnable(INT apIndex, BOOL *output_bool)
 			*output_bool=FALSE;
 		else
 			*output_bool=TRUE;
-		return RETURN_OK;
 	}
 	}
+	return RETURN_OK;
 }
 
 // sets an internal variable for ssid advertisement.  Set to 1 to enable, set to 0 to disable
@@ -5253,6 +5279,8 @@ INT wifi_setApSsidAdvertisementEnable(INT apIndex, BOOL enable)
 {
 	//store the config, apply instantly
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+	{
 	char str[MAX_BUF_SIZE]={'\0'};
 	char string[MAX_BUF_SIZE]={'\0'};
 	char cmd[MAX_CMD_SIZE]={'\0'};
@@ -5277,6 +5305,7 @@ INT wifi_setApSsidAdvertisementEnable(INT apIndex, BOOL enable)
 	list_free_param(&list);
 	Dynamically_Updated_SSIDAdvertisement_Hostapd_Process(apIndex,enable);
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+	}
 	return RETURN_OK;
 }
 
@@ -5304,9 +5333,14 @@ INT wifi_getApWMMCapability(INT apIndex, BOOL *output)
 	if(!output)
 		return RETURN_ERR;
 
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
 	rpi_hostapdRead(config_file, "wmm_enabled", buf, sizeof(buf));
 	*output = (strncmp("1",buf,1) == 0);
+	}
+	else
+		*output = 0;
 	return RETURN_OK;	
 }
 
@@ -5334,9 +5368,14 @@ INT wifi_getApWmmEnable(INT apIndex, BOOL *output)
 	if(!output)
 		return RETURN_ERR;
 
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
 	rpi_hostapdRead(config_file, "wmm_enabled", buf, sizeof(buf));
 	*output = (strncmp("1",buf,1) == 0);
+	}
+	else
+		*output = 0;
 	return RETURN_OK;
 }
 
@@ -5344,6 +5383,8 @@ INT wifi_getApWmmEnable(INT apIndex, BOOL *output)
 INT wifi_setApWmmEnable(INT apIndex, BOOL enable)
 {
 	printf("%s:%d\n",__FUNCTION__,enable);
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	char config_file[MAX_BUF_SIZE] = {0};
 	struct hostapd_params list;
 
@@ -5353,6 +5394,7 @@ INT wifi_setApWmmEnable(INT apIndex, BOOL enable)
 	rpi_hostapdWrite(config_file, &list, 1);
 	rpi_hostapdProcessUpdate(apIndex, &list, 1);
         rpi_reloadAp(apIndex);
+	}
 	return RETURN_OK;
 }
 
@@ -5364,15 +5406,22 @@ INT wifi_getApWmmUapsdEnable(INT apIndex, BOOL *output)
         if(!output)
                 return RETURN_ERR;
 
+	if((apIndex == 0) || (apIndex == 1))
+	{
         sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
         rpi_hostapdRead(config_file, "uapsd_advertisement_enabled", buf, sizeof(buf));
         *output = (strncmp("1",buf,1) == 0);
+	}
+	else
+		*output = 0;
         return RETURN_OK;
 }
 
 // enables/disables Automatic Power Save Delivery on the hardwarwe for this AP
 INT wifi_setApWmmUapsdEnable(INT apIndex, BOOL enable)
 {
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	char config_file[MAX_BUF_SIZE] = {0};
         struct hostapd_params list;
 
@@ -5382,6 +5431,7 @@ INT wifi_setApWmmUapsdEnable(INT apIndex, BOOL enable)
         rpi_hostapdWrite(config_file, &list, 1);
 	rpi_hostapdProcessUpdate(apIndex, &list, 1);
         rpi_reloadAp(apIndex);
+	}
         return RETURN_OK;
 }   
 
@@ -5401,11 +5451,16 @@ INT wifi_getApIsolationEnable(INT apIndex, BOOL *output)
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	if (!output)
 		return RETURN_ERR;
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
 	rpi_hostapdRead(config_file, "ap_isolate", output_val, sizeof(output_val));
 
 	if( strcmp(output_val,"1") == 0 )
 		*output = TRUE;
+	else
+		*output = FALSE;
+	}
 	else
 		*output = FALSE;
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);  	
@@ -5415,6 +5470,8 @@ INT wifi_getApIsolationEnable(INT apIndex, BOOL *output)
 INT wifi_setApIsolationEnable(INT apIndex, BOOL enable)
 {
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	char string[MAX_BUF_SIZE]={'\0'};
 	char config_file[MAX_BUF_SIZE] = {0};
 	struct hostapd_params params;
@@ -5429,8 +5486,8 @@ INT wifi_setApIsolationEnable(INT apIndex, BOOL enable)
 
 	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
 	rpi_hostapdWrite(config_file,&params,1);
+	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-
 	return RETURN_OK;
 }
 
@@ -5441,15 +5498,22 @@ INT wifi_getApMaxAssociatedDevices(INT apIndex, UINT *output_uint)
 	char config_file[MAX_BUF_SIZE] = {0};
 
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
 	rpi_hostapdRead(config_file, "max_num_sta", output_val, sizeof(output_val));
 	*output_uint=atol(output_val);
+	}
+	else
+		*output_uint=75;
 	return RETURN_OK;
 }
 
 INT wifi_setApMaxAssociatedDevices(INT apIndex, UINT number)
 {
 	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	char string[MAX_BUF_SIZE]={'\0'};
 	char config_file[MAX_BUF_SIZE] = {0};
 	struct hostapd_params params;
@@ -5463,6 +5527,7 @@ INT wifi_setApMaxAssociatedDevices(INT apIndex, UINT number)
 	rpi_hostapdWrite(config_file,&params,1);
 	rpi_hostapdProcessUpdate(apIndex, &params, 1);
 	rpi_reloadAp(apIndex);
+	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
@@ -5529,6 +5594,8 @@ INT wifi_getApSecurityModeEnabled(INT apIndex, CHAR *output)
         if(!output)
                 return RETURN_ERR;
 
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex == 5))
+	{
         wifi_getApBeaconType(apIndex, securityType);
         wifi_getApBasicAuthenticationMode(apIndex, authMode);
 
@@ -5555,6 +5622,9 @@ INT wifi_getApSecurityModeEnabled(INT apIndex, CHAR *output)
         } else {
                 strcpy(output,"None");
         }
+	}
+	else
+		 strcpy(output,"None");
         WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }
@@ -5571,6 +5641,8 @@ INT wifi_setApSecurityModeEnabled(INT apIndex, CHAR *encMode)
 
         printf("%s: apIndex %d, encMode %s\n",__func__, apIndex, encMode);
 
+	if((apIndex == 0) || (apIndex == 1) || (apIndex == 4) || (apIndex ==5))
+	{
         if (strcmp(encMode, "None")==0) {
                 strcpy(securityType,"None");
                 strcpy(authMode,"None");
@@ -5599,6 +5671,7 @@ INT wifi_setApSecurityModeEnabled(INT apIndex, CHAR *encMode)
         wifi_setApBeaconType(apIndex, securityType);
         wifi_setApBasicAuthenticationMode(apIndex, authMode);
 	Dynamically_Updated_Security_Encryption_Modes_Hostapd_Process(apIndex,"Security_mode",encMode);
+	}
         WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
         return RETURN_OK;
 }   
@@ -5609,12 +5682,16 @@ INT wifi_setApSecurityModeEnabled(INT apIndex, CHAR *encMode)
 // PSK Key of 8 to 63 characters is considered an ASCII string, and 64 characters are considered as HEX value
 INT wifi_getApSecurityPreSharedKey(INT apIndex, CHAR *output_string)
 {	
-//	snprintf(output_string, 64, "E4A7A43C99DFFA57");
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	struct params params={"wpa_passphrase",""};
 	wifi_dbg_printf("\nFunc=%s\n",__func__);
 	if (NULL == output_string)
 		return RETURN_ERR;
 	wifi_hostapdRead(apIndex,&params,output_string);
+	}
+	else
+		snprintf(output_string, 64, "E4A7A43C99DFFA57");
 	wifi_dbg_printf("\noutput_string=%s\n",output_string);
 
 	if(output_string==NULL)
@@ -5628,6 +5705,8 @@ INT wifi_getApSecurityPreSharedKey(INT apIndex, CHAR *output_string)
 INT wifi_setApSecurityPreSharedKey(INT apIndex, CHAR *preSharedKey)        
 {	
 	//save to wifi config and hotapd config. wait for wifi reset or hostapd restet to apply
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	struct params params={'\0'};
 	int ret;
 	param_list_t list;
@@ -5653,30 +5732,38 @@ INT wifi_setApSecurityPreSharedKey(INT apIndex, CHAR *preSharedKey)
 		Dynamically_Updated_Password_hostapd_process(apIndex,preSharedKey);
 		return ret;
 	}
+	}
+	return RETURN_OK;
 }
 
 //A passphrase from which the PreSharedKey is to be generated, for WPA-Personal or WPA2-Personal or WPA-WPA2-Personal security modes.
 // outputs the passphrase, maximum 63 characters
 INT wifi_getApSecurityKeyPassphrase(INT apIndex, CHAR *output_string)
 {	
-    struct params params={"wpa_passphrase",""};
-    wifi_dbg_printf("\nFunc=%s\n",__func__);
-    if (NULL == output_string)
-    return RETURN_ERR;
-    wifi_hostapdRead(apIndex,&params,output_string);
-    wifi_dbg_printf("\noutput_string=%s\n",output_string);
+	if((apIndex == 0) || (apIndex == 1))
+	{
+		struct params params={"wpa_passphrase",""};
+		wifi_dbg_printf("\nFunc=%s\n",__func__);
+		if (NULL == output_string)
+			return RETURN_ERR;
+		wifi_hostapdRead(apIndex,&params,output_string);
+	}
+	else
+		snprintf(output_string, 64, "E4A7A43C99DFFA57");
+	wifi_dbg_printf("\noutput_string=%s\n",output_string);
 
-    if(output_string==NULL)
-        return RETURN_ERR;
-    else
-        return RETURN_OK;
+	if(output_string==NULL)
+		return RETURN_ERR;
+	else
+		return RETURN_OK;
 }
 
 // sets the passphrase enviornment variable, max 63 characters
 INT wifi_setApSecurityKeyPassphrase(INT apIndex, CHAR *passPhrase)
 {	
 	//save to wifi config and hotapd config. wait for wifi reset or hostapd restet to apply
-//	return RETURN_ERR;
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	struct params params={'\0'};
         int ret;
         param_list_t list;
@@ -5702,6 +5789,8 @@ INT wifi_setApSecurityKeyPassphrase(INT apIndex, CHAR *passPhrase)
 		Dynamically_Updated_Password_hostapd_process(apIndex,passPhrase);
                 return ret;
         }
+	}
+	return RETURN_OK;
 }
 
 //When set to true, this AccessPoint instance's WiFi security settings are reset to their factory default values. The affected settings include ModeEnabled, WEPKey, PreSharedKey and KeyPassphrase.
@@ -5858,8 +5947,8 @@ INT wifi_getApWpsConfigMethodsEnabled(INT apIndex, CHAR *output)
 				output[strlen(output)-1] = '\0';
 
 		}
-		return RETURN_OK;
 	}
+	return RETURN_OK;
 }
 
 // sets an enviornment variable that specifies the WPS configuration method(s).  methodString is a comma separated list of methods USBFlashDrive,Ethernet,ExternalNFCToken,IntegratedNFCToken,NFCInterface,PushButton,PIN
@@ -5918,8 +6007,8 @@ INT wifi_setApWpsConfigMethodsEnabled(INT apIndex, CHAR *methodString)
 			sprintf(buf,"echo config_methods=%s >> /nvram/hostapd%d.conf",local_config_methods,apIndex);
 		system(buf);
 		Dynamically_Updated_WPS_ConfigMethods_Hostapd_process(apIndex,&local_config_methods);
-		return RETURN_OK;
 	}
+	return RETURN_OK;
 }
 
 // outputs the pin value, ulong_pin must be allocated by the caller
@@ -5953,9 +6042,9 @@ INT wifi_setApWpsDevicePIN(INT apIndex, ULONG pin)
 	if((apIndex == 0) || (apIndex == 1))
 	{
 		sprintf(buf,"%s%ld%s%ld%s%s","sed -i 's/ap_pin=",prev_pin,"/ap_pin=",pin,"/g' /nvram/",Hconf);
+		system(buf);
+		Dynamically_Updated_WPS_ApPin_Hostapd_Process(apIndex,pin);
 	}
-	system(buf);
-	Dynamically_Updated_WPS_ApPin_Hostapd_Process(apIndex,pin);
 	return RETURN_OK;
 }    
 
@@ -6008,7 +6097,7 @@ INT wifi_setApWpsEnrolleePin(INT apIndex, CHAR *pin)
 	else
 		return RETURN_ERR;
 	}
-	return RETURN_ERR;
+	return RETURN_OK;
 }
 
 // This function is called when the WPS push button has been pressed for this AP
@@ -6036,7 +6125,7 @@ INT wifi_setApWpsButtonPush(INT apIndex)
 	else
 		return RETURN_ERR;
 	}
-	return RETURN_ERR;
+	return RETURN_OK;
 }
 
 // cancels WPS mode for this AP
@@ -6064,7 +6153,7 @@ INT wifi_cancelApWPS(INT apIndex)
 	else
 		return RETURN_ERR;
 	}
-	return RETURN_ERR;
+	return RETURN_OK;
 }                                 
 
 //Device.WiFi.AccessPoint.{i}.AssociatedDevice.*
@@ -6670,7 +6759,8 @@ INT wifi_getApSecurityMFPConfig(INT apIndex, CHAR *output_string)
 {
 	char buf[MAX_BUF_SIZE] = {0};
 	char config_file[MAX_BUF_SIZE] = {0};
-
+	if((apIndex == 0) || (apIndex ==1))
+	{	
 	snprintf(config_file, sizeof(config_file), "%s%d.conf", CONFIG_PREFIX, apIndex);
 	rpi_hostapdRead(config_file, "ieee80211w", buf, sizeof(buf));
 	if(strcmp(buf,"1") == 0)
@@ -6679,11 +6769,16 @@ INT wifi_getApSecurityMFPConfig(INT apIndex, CHAR *output_string)
 		strcpy(output_string,"Disabled");
 	else if(strcmp(buf,"2") == 0)
 		strcpy(output_string,"Required");
+	}
+	else
+		strcpy(output_string,"Disabled");
 	return RETURN_OK;
 }
 INT wifi_setApSecurityMFPConfig(INT apIndex, CHAR *MfpConfig)
 {
 	printf("%s:%s\n",__FUNCTION__,MfpConfig);
+	if((apIndex == 0) || (apIndex ==1))
+	{	
 	char config_file[MAX_BUF_SIZE] = {0};
 	char string[MAX_BUF_SIZE] = {0};
 	struct hostapd_params list;
@@ -6700,6 +6795,7 @@ INT wifi_setApSecurityMFPConfig(INT apIndex, CHAR *MfpConfig)
 	rpi_hostapdWrite(config_file, &list, 1);
 	rpi_hostapdProcessUpdate(apIndex, &list, 1);
 	rpi_reloadAp(apIndex);
+	}
 	return RETURN_OK;
 }
 INT wifi_getRadioAutoChannelEnable(INT radioIndex, BOOL *output_bool)
@@ -6930,11 +7026,11 @@ INT wifi_getApManagementFramePowerControl(INT wlanIndex, INT *ManagementFramePow
    return RETURN_OK;
 }
 
-INT wifi_setApManagementFramePowerControl(INT wlanIndex, INT *ManagementFramePowerControl)
+INT wifi_setApManagementFramePowerControl(INT wlanIndex, INT ManagementFramePowerControl)
 {
    return RETURN_OK;
 }
-INT wifi_getRadioDcsChannelMetrics(INT radioIndex,wifi_channelMetrics_t channel_matrix[],size_t size)
+INT wifi_getRadioDcsChannelMetrics(INT radioIndex,wifi_channelMetrics_t *input_output_channelMetrics_array, INT array_size)
 {
    return RETURN_OK;
 }
@@ -7128,6 +7224,8 @@ INT wifi_getRadioPercentageTransmitPower(INT radioIndex, ULONG *output_ulong)
 INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
 {
 	printf("%s:%d:%d\n",__FUNCTION__,activate,apIndex);
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	char config_file[MAX_BUF_SIZE] = {0};
 	struct hostapd_params list;
 
@@ -7137,17 +7235,21 @@ INT wifi_setBSSTransitionActivation(UINT apIndex, BOOL activate)
 	rpi_hostapdWrite(config_file, &list, 1);
 	rpi_hostapdProcessUpdate(apIndex, &list, 1);
         rpi_reloadAp(apIndex);
+	}
 	return RETURN_OK;
 }
 INT wifi_getBSSTransitionActivation(UINT apIndex, BOOL *activate)
 {
 	char buf[MAX_BUF_SIZE] = {0};
 	char config_file[MAX_BUF_SIZE] = {0};
-
+	if((apIndex == 0) || (apIndex == 1))
+	{
 	snprintf(config_file, sizeof(config_file), "%s%d.conf", CONFIG_PREFIX, apIndex);
 	rpi_hostapdRead(config_file, "bss_transition", buf, sizeof(buf));
 	*activate = (strncmp("1",buf,1) == 0);
-
+	}
+	else
+		 *activate=0;
 	return RETURN_OK;
 }
 wifi_anqpStartReceivingTestFrame()
@@ -7196,11 +7298,13 @@ INT wifi_getApMacAddressControlMode(INT apIndex, INT *output_filterMode)
 
 	if (!output_filterMode)
 		return RETURN_ERR;
+	if((apIndex == 0) || (apIndex == 1))
+	{
 
 	sprintf(config_file, "%s%d.conf", CONFIG_PREFIX, apIndex);
 	rpi_hostapdRead(config_file, "macaddr_acl", buf, sizeof(buf));
 	*output_filterMode = atoi(buf);
-
+	}
 	return RETURN_OK;
 }
 
@@ -7261,28 +7365,36 @@ INT wifi_getApChannel(INT apIndex,ULONG *output_ulong)
 
 INT wifi_getNeighborReportActivation(UINT apIndex, BOOL *activate)
 {
-    char buf[32] = {0};
-    char config_file[MAX_BUF_SIZE] = {0};
+	char buf[32] = {0};
+	char config_file[MAX_BUF_SIZE] = {0};
+	if((apIndex == 0) || (apIndex == 1))
+	{
 
-    sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
-    rpi_hostapdRead(config_file, "rrm_neighbor_report", buf, sizeof(buf));
-    *activate = (strncmp("1",buf,1) == 0);
-    return RETURN_OK;
+		sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+		rpi_hostapdRead(config_file, "rrm_neighbor_report", buf, sizeof(buf));
+		*activate = (strncmp("1",buf,1) == 0);
+	}
+	else
+		*activate = 0;
+	return RETURN_OK;
 }
 
 INT wifi_setNeighborReportActivation(UINT apIndex, BOOL activate)
 {
-    printf("%s:%d\n",__FUNCTION__,activate);
-    char config_file[MAX_BUF_SIZE] = {0};
-    struct hostapd_params list;
+	printf("%s:%d\n",__FUNCTION__,activate);
+	if((apIndex == 0) || (apIndex == 1))
+	{
+		char config_file[MAX_BUF_SIZE] = {0};
+		struct hostapd_params list;
 
-    list.name = "rrm_neighbor_report";
-    list.value = activate?"1":"0";
-    sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
-    rpi_hostapdWrite(config_file, &list, 1);
-    rpi_hostapdProcessUpdate(apIndex, &list, 1);
-    rpi_reloadAp(apIndex);
-    return RETURN_OK;
+		list.name = "rrm_neighbor_report";
+		list.value = activate?"1":"0";
+		sprintf(config_file,"%s%d.conf",CONFIG_PREFIX,apIndex);
+		rpi_hostapdWrite(config_file, &list, 1);
+		rpi_hostapdProcessUpdate(apIndex, &list, 1);
+		rpi_reloadAp(apIndex);
+	}
+	return RETURN_OK;
 }
 
 INT wifi_getApAssociatedDeviceStats(

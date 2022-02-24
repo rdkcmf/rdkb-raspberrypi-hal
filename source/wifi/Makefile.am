@@ -26,5 +26,5 @@ hardware_platform = i686-linux-gnu
 
 lib_LTLIBRARIES = libhal_wifi.la
 libhal_wifi_la_CPPFLAGS = -I$(top_srcdir)/./include $(CPPFLAGS)
-libhal_wifi_la_SOURCES = wifi_hal.c wifi_hostapd_interface.c rpi_wifi_hal_assoc_devices_details.c client_wifi_hal.c
+libhal_wifi_la_SOURCES = wifi_hal.c wifi_hostapd_interface.c rpi_wifi_hal_assoc_devices_details.c client_wifi_hal.c rpi_wifi_hal_version_3.c
 libhal_wifi_la_LDFLAGS = 
