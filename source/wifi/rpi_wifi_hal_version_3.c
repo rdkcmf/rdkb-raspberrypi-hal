@@ -853,7 +853,7 @@ INT wifi_getRadioOperatingParameters(wifi_radio_index_t index, wifi_radio_operat
 	}
 	operationParam->channel = lval;
 	wifi_getRadioAutoChannelEnable(index,&enabled);
-	operationParam->autoChannelEnabled = FALSE; //hardcoded for now
+	operationParam->autoChannelEnabled = enabled; 
 	operationParam->csa_beacon_count = 15; // XXX: hardcoded for now
 	/* countryCode */
 	operationParam->countryCode = wifi_countrycode_IN; // XXX: hardcoded for now
