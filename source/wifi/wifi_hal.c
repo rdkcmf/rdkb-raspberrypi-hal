@@ -197,7 +197,6 @@ static int rpi_reloadAp(int apIndex)
 //For Getting Current Interface Name from corresponding hostapd configuration
 void GetInterfaceName(char *interface_name, char *conf_file)
 {
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	FILE *fp = NULL;
 	char path[MAX_BUF_SIZE] = {0},output_string[MAX_BUF_SIZE] = {0},fname[MAX_BUF_SIZE] = {0};
 	int count = 0;
@@ -230,16 +229,11 @@ void GetInterfaceName(char *interface_name, char *conf_file)
 	for(count = 0;output_string[count]!='\n';count++)
 			interface_name[count] = output_string[count];
 	interface_name[count]='\0';
-	
-	printf("Interface name %s \n", interface_name);
-	
 	pclose(fp);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 INT File_Reading(CHAR *file, char *Value)
 {
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	FILE *fp = NULL;
 	char buf[MAX_CMD_SIZE] = {0}, copy_buf[MAX_CMD_SIZE] ={0};
 	int count = 0;
@@ -258,7 +252,6 @@ INT File_Reading(CHAR *file, char *Value)
 	}
 	strcpy(Value,copy_buf);
 	pclose(fp);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -355,7 +348,6 @@ void wifi_RestartPrivateWifi_2G()
 
 int _syscmd(char *cmd, char *retBuf, int retBufSize)
 {
-    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     FILE *f;
     char *ptr = retBuf;
     int bufSize=retBufSize, bufbytes=0, readbytes=0;
@@ -385,7 +377,6 @@ int _syscmd(char *cmd, char *retBuf, int retBufSize)
     }
     pclose(f);
     retBuf[retBufSize-1]=0;
-    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 static int writeBandWidth(int radioIndex,char *bw_value)
@@ -426,7 +417,6 @@ static int readBandWidth(int radioIndex,char *bw_value)
  **************************************************************************/
 static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
 {
-    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     char *list = ifnames_list;
     char command[MAX_BUF_SIZE] = "";
     char out[MAX_BUF_SIZE] = "";
@@ -452,7 +442,6 @@ static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
         system(command);
         temp = strtok(NULL,", ");
     }
-    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -466,7 +455,6 @@ static INT add_ifnames_in_bridge(char *bridge,char *ifnames_list)
  **************************************************************************/
 static INT list_add_param(param_list_t *list,struct params params)
 {
-    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     if(list->parameter_list==NULL)
     {
 		if(list->parameter_list=(struct params *)calloc(1,(sizeof(struct params))))
@@ -495,7 +483,6 @@ static INT list_add_param(param_list_t *list,struct params params)
             return RETURN_ERR;
         }
     }
-   WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
    return RETURN_OK;
 }
 
@@ -521,7 +508,6 @@ static void list_free_param(param_list_t *list)
  **************************************************************************/
 static INT get_param_value(char *parameter, char *output)
 {
-    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__); 
     FILE *f;
     char *line = NULL;
     size_t len = 0;
@@ -544,7 +530,6 @@ static INT get_param_value(char *parameter, char *output)
      }
      free(line);
      fclose(f);
-    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -556,7 +541,6 @@ static INT get_param_value(char *parameter, char *output)
  **************************************************************************/
 static INT prepare_hostapd_conf()
 {
-    WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char cmd[128];
     /* check  /usr/ccsp/wifi/hostapd0.conf, /usr/ccsp/wifi/hostapd0.conf , /usr/ccsp/wifi/hostapd4.conf,/usr/ccsp/wifi/hostapd5.conf exists or not */
 	if(( access(DEF_HOSTAPD_CONF_0, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_1, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_4, F_OK) != -1 ) && ( access(DEF_HOSTAPD_CONF_5, F_OK) != -1 ))
@@ -615,7 +599,6 @@ static INT prepare_hostapd_conf()
 		sprintf(cmd, "cp %s %s",DEF_HOSTAPD_CONF_5,HOSTAPD_CONF_5);
 		system(cmd);
 	}
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 
@@ -627,14 +610,12 @@ void wifi_newApAssociatedDevice_callback_register(wifi_newApAssociatedDevice_cal
 //Stop or Strat the broadcasting SSID names in Hostapd process
 void Stop_Start_Broadcasting_SSID_Names_Hostapd_Process(int index,BOOL *Public_ssid,char *Alias_Interface_name)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char cmd[MAX_CMD_SIZE] = {0};
         if(*Public_ssid == 0)
                 sprintf(cmd,"hostapd_cli -p /var/run/hostapd%d  -i %s SET ignoe_broadcast_ssid 1",index,Alias_Interface_name);
         else
                 sprintf(cmd,"hostapd_cli -p /var/run/hostapd%d -i %s SET ignoe_broadcast_ssid 0",index,Alias_Interface_name);
         system(cmd);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 //Get the interface name form hostapd conf using index number
@@ -648,31 +629,26 @@ void GetInterfaceName_HostapdConf(int apIndex,char *interface_name)
 //Dynamically Disabling the hostapd process
 void Dynamically_Disabling_hostapd_process(int apIndex)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
         sprintf(cmd,"hostapd_cli -p /var/run/hostapd%d -i %s DISABLE",apIndex,interface_name);
         system(cmd);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 //Dynamically Enabling the hostapd process
 void Dynamically_Enabling_hostapd_process(int apIndex)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
         sprintf(cmd,"hostapd_cli -p /var/run/hostapd%d -i %s ENABLE",apIndex,interface_name);
 	printf("%s .. %s \n",__FUNCTION__,cmd);
         system(cmd);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void Dynamically_Updated_SupportedRated_hostapd_process(int apIndex, char *string)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -680,13 +656,11 @@ void Dynamically_Updated_SupportedRated_hostapd_process(int apIndex, char *strin
         system(cmd);
         Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	
 }
 //Dynamically updated the new password in hostapd process
 void Dynamically_Updated_Password_hostapd_process(int apIndex,char *password)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -697,13 +671,11 @@ void Dynamically_Updated_Password_hostapd_process(int apIndex,char *password)
         Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
 	}
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 //Dynamically Updated SSID Advertisement data in Hostapd process
 void Dynamically_Updated_SSIDAdvertisement_Hostapd_Process(int apIndex,BOOL enable)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -714,14 +686,12 @@ void Dynamically_Updated_SSIDAdvertisement_Hostapd_Process(int apIndex,BOOL enab
         system(cmd);
         Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 //Dynamically updated SSID Name in hostapd process
 
 void Dynamically_Updated_SSIDName_Hostapd_Process(int apIndex,char *ssid)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0},password[50] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -733,12 +703,10 @@ void Dynamically_Updated_SSIDName_Hostapd_Process(int apIndex,char *ssid)
         system(cmd);
          Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void DYnamically_Updated_OperatingChannelBandwidth(int radioIndex,char *String)
 {
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char interface_name[10] = {0};
 	char cmd[MAX_CMD_SIZE] = {0};
 	GetInterfaceName_HostapdConf(radioIndex,&interface_name);
@@ -746,17 +714,14 @@ void DYnamically_Updated_OperatingChannelBandwidth(int radioIndex,char *String)
 	system(cmd);
         Dynamically_Disabling_hostapd_process(radioIndex);
         Dynamically_Enabling_hostapd_process(radioIndex);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 //Dynamically updated the new Security_mode/Encryption mode operation in hostapd process
 void Dynamically_Updated_Security_Encryption_Modes_Hostapd_Process(int apIndex,char *mode,char *String)
 {
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char interface_name[10] = {0},SecurityMode[50] = {0},EncryptionMode[50] = {0},buf[MAX_BUF_SIZE] = {0};
 	char cmd[MAX_CMD_SIZE] = {0},password[50] = {0},encMode[50] = {0},Security_type[10] = {0};
 	wifi_getApSecurityPreSharedKey(apIndex,&password);
 	GetInterfaceName_HostapdConf(apIndex,&interface_name);
-	printf("%s ... %s  ... %s \n",__func__,mode,String);
 
 	//Get the current Encryption mode from hostapd configuration file.
 	wifi_getApWpaEncryptionMode(apIndex,&encMode);
@@ -770,7 +735,6 @@ void Dynamically_Updated_Security_Encryption_Modes_Hostapd_Process(int apIndex,c
 		printf("Invalid Encryption Mode..Please check your set-up once \n");
 
 	//Get the Security Mode from hostapd configuration file
-	printf("%s Encryption Mode is %s:%d \n",__FUNCTION__,EncryptionMode,apIndex);
 	wifi_getApSecurityModeEnabled(apIndex,&SecurityMode);
 	if((strcmp(SecurityMode,"WPA-Personal") == 0) || (strcmp(String,"1") == 0) || (strcmp(String,"WPA") == 0))
 		strcpy(Security_type,"1");
@@ -867,13 +831,11 @@ void Dynamically_Updated_Security_Encryption_Modes_Hostapd_Process(int apIndex,c
 	}
 	Dynamically_Disabling_hostapd_process(apIndex);
 	Dynamically_Enabling_hostapd_process(apIndex);
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 //Dynamic Channel Change in hostapd process
 void Dynamically_Updated_Channel_Value_hostapd_process(INT apIndex,ULONG Value)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0},Alias_interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0},buf[MAX_BUF_SIZE] = {0};
 	char xfinity_wifi[5] = {0};
@@ -947,13 +909,10 @@ void Dynamically_Updated_Channel_Value_hostapd_process(INT apIndex,ULONG Value)
                 sprintf(cmd,"ifconfig %s down",interface_name);
                 system(cmd);
         }
-        printf("%s : %d : Private : %d\n",__FUNCTION__,ssidenable_Pub,ssidenable_Pri);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 }
 
 void Dynamically_Enabling_And_Disabling_WPS_Support_Hostapd_Process(int apIndex,BOOL enable)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -964,13 +923,11 @@ void Dynamically_Enabling_And_Disabling_WPS_Support_Hostapd_Process(int apIndex,
         system(cmd);
         Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 
 }
 
 void Dynamically_Updated_WPS_ConfigMethods_Hostapd_process(int apIndex,char *MethodString)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -978,13 +935,10 @@ void Dynamically_Updated_WPS_ConfigMethods_Hostapd_process(int apIndex,char *Met
         system(cmd);
         Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-
 }
 
 void Dynamically_Updated_WPS_ApPin_Hostapd_Process(int apIndex,ULONG pin)
 {
-        WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
         char interface_name[10] = {0};
         char cmd[MAX_CMD_SIZE] = {0};
         GetInterfaceName_HostapdConf(apIndex,&interface_name);
@@ -992,8 +946,6 @@ void Dynamically_Updated_WPS_ApPin_Hostapd_Process(int apIndex,ULONG pin)
         system(cmd);
         Dynamically_Disabling_hostapd_process(apIndex);
         Dynamically_Enabling_hostapd_process(apIndex);
-        WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
-
 }
                                        
 INT wifi_setApBeaconRate(INT radioIndex,CHAR *beaconRate)
@@ -1479,7 +1431,6 @@ INT wifi_getSSIDNumberOfEntries(ULONG *output) //Tr181
 //Get the Radio enable config parameter
 INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 {
-	WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
 	char cmd[MAX_CMD_SIZE]={'\0'};
 	char buf[MAX_BUF_SIZE]={'\0'};
 	char HConf_file[MAX_BUF_SIZE]={'\0'};
@@ -1537,7 +1488,6 @@ INT wifi_getRadioEnable(INT radioIndex, BOOL *output_bool)      //RDKB
 	}
 	else
 		printf("Invalid Index value \n");
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 INT wifi_setRadioEnable(INT radioIndex, BOOL enable)            //RDKB
@@ -1583,7 +1533,6 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)            //RDKB
 		{
 			Dynamically_Disabling_hostapd_process(0);
 			Dynamically_Enabling_hostapd_process(0);
-			printf("%d ... %s ...\n",GetssidEnable_Pub,__func__);
 			if(strcmp(xfinity_wifi,"1") == 0)
 			{
 				Stop_Start_Broadcasting_SSID_Names_Hostapd_Process(4,&GetssidEnable_Pub,&Alias_Interface_name);
@@ -1612,7 +1561,6 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)            //RDKB
 		wifi_getSSIDEnable(5,&GetssidEnable_Pub);
 		GetInterfaceName(IfName,"/nvram/hostapd1.conf");
 		GetInterfaceName(Alias_Interface_name,"/nvram/hostapd5.conf");
-		printf("%s --- %d : %d \n",__FUNCTION__,GetssidEnable_Pub,GetssidEnable_Pri);
 		if(enable == FALSE)
 		{
 			Dynamically_Disabling_hostapd_process(1);
@@ -1623,7 +1571,6 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)            //RDKB
 		{
 			Dynamically_Disabling_hostapd_process(1);
 			Dynamically_Enabling_hostapd_process(1);
-			printf("%s --- %d : %d \n",__FUNCTION__,GetssidEnable_Pub,GetssidEnable_Pri);
 			if(strcmp(xfinity_wifi,"1") == 0)
 			{
 				Stop_Start_Broadcasting_SSID_Names_Hostapd_Process(5,&GetssidEnable_Pub,&Alias_Interface_name);
@@ -1654,13 +1601,11 @@ INT wifi_setRadioEnable(INT radioIndex, BOOL enable)            //RDKB
 INT wifi_getRadioStatus(INT radioIndex, BOOL *output_bool)	//RDKB
 {
 
-	printf("%s : %d \n",__FUNCTION__,radioIndex);
     if (NULL == output_bool) {
         return RETURN_ERR;
     } else {
         wifi_getRadioEnable(radioIndex, output_bool);
     }
-    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -5221,7 +5166,6 @@ INT wifi_getApEnable(INT apIndex, BOOL *output_bool)
 	{
 		*output_bool = 0;
 	}
-	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
 }
 

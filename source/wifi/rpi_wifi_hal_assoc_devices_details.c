@@ -642,7 +642,6 @@ int rpi_getApAssociatedDeviceDiagnosticResult3(int apIndex, wifi_associated_dev3
 
 INT rpi_WiFiAPAssociatedDevicesGet(INT apIndex,char *mac,int maclen)
 {
-        printf("%s Enter\n", __FUNCTION__);
         char buf[512] = {0},ifname[32] = {0},cmd[512] = {0},config_file[32]={0},data_buf[64]={0};
         int client_count = 0,ass_cnt = 0;
 
@@ -677,10 +676,8 @@ INT rpi_WiFiAPAssociatedDevicesGet(INT apIndex,char *mac,int maclen)
         }
         else
         {
-                printf("%s, No Devices connected to accesspoint %s \n", __FUNCTION__, ifname);
                 return RETURN_ERR;
         }
-        printf("%s Exit \n", __FUNCTION__);
         return RETURN_OK;
 }
 
