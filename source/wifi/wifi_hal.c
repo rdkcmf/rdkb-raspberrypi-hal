@@ -1898,6 +1898,7 @@ INT wifi_getRadioSupportedStandards(INT radioIndex, CHAR *output_string) //Tr181
 //The output_string is a max length 64 octet string that is allocated by the RDKB code.  Implementations must ensure that strings are not longer than this.
 INT wifi_getRadioStandard(INT radioIndex, CHAR *output_string, BOOL *gOnly, BOOL *nOnly, BOOL *acOnly)	//RDKB
 {
+#if 0
     WIFI_ENTRY_EXIT_DEBUG("Inside %s:%d\n",__func__, __LINE__);
     char string[50] = {0};
     struct params params={"hw_mode",""};
@@ -1950,20 +1951,19 @@ INT wifi_getRadioStandard(INT radioIndex, CHAR *output_string, BOOL *gOnly, BOOL
 	}
     }
         wifi_dbg_printf("\nReturning from getRadioStandard\n");
-#if 0
+#endif
     if(radioIndex==0) {
         snprintf(output_string, 64, "n");        //"ht" needs to be translated to "n" or others
-        *gOnly=FALSE;
-        *nOnly=TRUE;
+        *gOnly=TRUE;
+        *nOnly=FALSE;
         *acOnly=FALSE;
     } else {
         snprintf(output_string, 64, "ac");        //"vht" needs to be translated to "ac"
         *gOnly=FALSE;
         *nOnly=FALSE;
-        *acOnly=FALSE;    
+        *acOnly=TRUE;    
     }
-#endif
-    WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
+    //WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
     return RETURN_OK;
 
 }
@@ -4297,7 +4297,8 @@ INT wifi_getApWpaEncryptionMode(INT apIndex, CHAR *output_string)
 	else if(strcmp(output_string,"CCMP") == 0)
 		strncpy(output_string,"AESEncryption", strlen("AESEncryption"));
 	else if(strcmp(output_string,"TKIP CCMP") == 0)
-		strncpy(output_string,"TKIPandAESEncryption", strlen("TKIPandAESEncryption"));
+//		strncpy(output_string,"TKIPandAESEncryption", strlen("TKIPandAESEncryption"));
+		strncpy(output_string,"AESEncryption", strlen("AESEncryption"));
 	}
 	WIFI_ENTRY_EXIT_DEBUG("Exiting %s:%d\n",__func__, __LINE__);
 	return RETURN_OK;
