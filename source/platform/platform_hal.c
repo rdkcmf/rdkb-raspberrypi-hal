@@ -41,6 +41,7 @@
 
 #include "platform_hal.h"
 
+#define MAX_CMD_SIZE        512
 #define MAX_BUFFER_SIZE     1024
 #define TMP_BUFFER_SIZE     128
 #define ONE_KILOBYTE        1024
@@ -292,34 +293,20 @@ INT platform_hal_GetBaseMacAddress(CHAR *pValue)
 }
 INT platform_hal_GetHardware(CHAR *pValue)
 {
-    int ret = RETURN_ERR;
-    char hwVer[TMP_BUFFER_SIZE] = {'\0'};
+    char cmd[MAX_CMD_SIZE], output[MAX_BUFFER_SIZE];
+    unsigned long flash_size_bytes, flash_size_mb;
 
-    if(NULL == pValue)
-    {
+    if (!pValue)
         return RETURN_ERR;
-    }
 
-    ret = execute("grep 'Revision' /proc/cpuinfo", hwVer);
-    if(RETURN_OK != ret)
-    {
-        printf("\nError %s\n", __func__);
-    }
-    else if(strstr(hwVer, "a02082") != NULL)
-    {
-        strncpy(pValue, "raspberrypi3", strlen("raspberrypi3"));
-    }
-    else if(strstr(hwVer, "a01041") != NULL)
-    {
-        strncpy(pValue, "raspberrypi2", strlen("raspberrypi2"));
-    }
-    else
-    {
-        strncpy(pValue, "raspberrypi", strlen("raspberrypi"));
-    }
+    //Getting the number of sectors
+    snprintf(cmd, sizeof(cmd), "cat /sys/block/mmcblk0/size");
+    execute(cmd, output);
+    flash_size_bytes = atol(output)*512;
+    flash_size_mb= flash_size_bytes/(1024*1024);
+    snprintf(pValue, 16, "%lu", flash_size_mb);
 
-    return ret;
-
+    return RETURN_OK;
 }
 INT platform_hal_GetTotalMemorySize(ULONG *pulSize)
 {
