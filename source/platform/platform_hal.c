@@ -550,3 +550,25 @@ INT platform_hal_GetDhcpv6_Options ( dhcp_opt_list ** req_opt_list, dhcp_opt_lis
     return RETURN_OK;
 }
 
+#ifdef _PLATFORM_HAL_TEST_
+int main(int argc,char **argv)
+{
+    INT ret=0;
+    char buf[1024]="";
+
+    if(argc!=2)
+    {
+        printf("Usage: platformhal <platform_hal_API>\n");
+        exit(-1);
+    }
+    if(strstr(argv[1], "platform_hal_GetFirmwareName")!=NULL)
+    {
+        platform_hal_GetFirmwareName(buf, sizeof(buf));
+        printf("FirmwareName:%s.\n", buf);
+        exit(0);
+    }
+    printf("Invalid platform_hal_API name\n");
+    exit(1);
+}
+#endif //_PLATFORM_HAL_TEST_
+
