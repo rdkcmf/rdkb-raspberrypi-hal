@@ -555,6 +555,8 @@ int main(int argc,char **argv)
 {
     INT ret=0;
     char buf[1024]="";
+    ULONG size=0;
+    BOOLEAN flag=FALSE;
 
     if(argc!=2)
     {
@@ -567,8 +569,110 @@ int main(int argc,char **argv)
         printf("FirmwareName:%s.\n", buf);
         exit(0);
     }
+    if(strstr(argv[1], "platform_hal_GetSoftwareVersion")!=NULL)
+    {
+        platform_hal_GetSoftwareVersion(buf, sizeof(buf));
+        printf("SoftwareVersion:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetBootloaderVersion")!=NULL)
+    {
+        platform_hal_GetBootloaderVersion(buf, sizeof(buf));
+        printf("BootloaderVersion:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetModelName")!=NULL)
+    {
+        platform_hal_GetModelName(buf);
+        printf("GetModelName:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetSerialNumber")!=NULL)
+    {
+        platform_hal_GetSerialNumber(buf);
+        printf("GetSerialNumber:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetHardwareVersion")!=NULL)
+    {
+        platform_hal_GetHardwareVersion(buf);
+        printf("GetHardwareVersion:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetBaseMacAddress")!=NULL)
+    {
+        platform_hal_GetBaseMacAddress(buf);
+        printf("GetBaseMacAddress:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetHardware")!=NULL)
+    {
+        platform_hal_GetHardware(buf);
+        printf("GetHardware:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetHardware_MemUsed")!=NULL)
+    {
+        platform_hal_GetHardware_MemUsed(buf);
+        printf("GetHardware_MemUsed:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetHardware_MemFree")!=NULL)
+    {
+        platform_hal_GetHardware_MemFree(buf);
+        printf("GetHardware_MemFree:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_getCMTSMac")!=NULL)
+    {
+        platform_hal_getCMTSMac(buf);
+        printf("getCMTSMac:%s.\n", buf);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetTotalMemorySize")!=NULL)
+    {
+        platform_hal_GetTotalMemorySize(&size);
+        printf("GetTotalMemorySize:%lu.\n", size);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetFreeMemorySize")!=NULL)
+    {
+        platform_hal_GetFreeMemorySize(&size);
+        printf("GetFreeMemorySize:%lu.\n", size);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetUsedMemorySize")!=NULL)
+    {
+        platform_hal_GetUsedMemorySize(&size);
+        printf("GetUsedMemorySize:%lu.\n", size);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetFactoryResetCount")!=NULL)
+    {
+        platform_hal_GetFactoryResetCount(&size);
+        printf("GetFactoryResetCount:%lu.\n", size);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetChipTemperature")!=NULL)
+    {
+        unsigned int chip =0;
+        platform_hal_GetChipTemperature(chip, &size);
+        printf("ChipIndex:%u, Temperature:%lu\n", chip, size);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_GetFanSpeed")!=NULL)
+    {
+        platform_hal_GetFanSpeed(&size);
+        printf("GetFanSpeed:%lu.\n", size);
+        exit(0);
+    }
+    if(strstr(argv[1], "platform_hal_SetFanSpeed")!=NULL)
+    {
+        platform_hal_SetFanSpeed(size);
+        printf("SetFanSpeed:%lu.\n", size);
+        exit(0);
+    }
     printf("Invalid platform_hal_API name\n");
     exit(1);
 }
 #endif //_PLATFORM_HAL_TEST_
-
