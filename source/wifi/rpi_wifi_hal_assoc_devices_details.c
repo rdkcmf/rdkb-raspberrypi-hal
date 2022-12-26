@@ -165,7 +165,7 @@ void rpi_adjusting_the_stringsize(char *src_str,char *dest_str)
 
 int *rpi_wifi_get_clients_count(int *pcount,char *ifname,int apIndex)
 {
-        const char cmd[MAX_CMD_SIZE]={0};
+        char cmd[MAX_CMD_SIZE]={0};
         char buf[MAX_BUF_SIZE] = {0};
 
         snprintf(cmd,sizeof(cmd),"hostapd_cli -p /var/run/hostapd%d -i%s all_sta | grep dot11RSNAStatsSTAAddress | wc -l",apIndex,ifname);
