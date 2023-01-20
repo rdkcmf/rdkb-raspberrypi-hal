@@ -1327,8 +1327,74 @@ INT wifi_init()                            //RDKB
 */
 INT wifi_reset()
 {
-	//TODO: resets the wifi subsystem, deletes all APs
-  return RETURN_OK;
+	int ap = 0;
+	FILE *fp = NULL;
+	FILE *fp1 = NULL;
+	int count_2g = 0;
+	int count_5g = 0;
+	for(ap = 0; ap < WIFI_HAL_TOTAL_NO_OF_APS; ap++)   
+	{
+		if((ap == 0) || (ap == 1) || (ap == 4) || (ap == 5))
+		{		  
+			Dynamically_Disabling_hostapd_process(ap);
+			Dynamically_Enabling_hostapd_process(ap);
+		}
+	}
+	fp = fopen("/tmp/.resetcount_2g", "r");
+	if(fp == NULL) //if file does not exist, create it
+	{
+		fp = fopen("/tmp/.resetcount_2g", "w");
+		{
+			if (NULL!=fp)
+			{
+				count_2g = 1;
+				fprintf(fp,"%d",count_2g);
+				fclose(fp);
+			}
+		}
+	}
+	else
+	{
+		fscanf(fp,"%d",&count_2g);
+		fclose(fp);
+		count_2g = count_2g+1;//increment count by 1
+		fp1 = fopen("/tmp/.resetcount_2g", "w");//open the same file to write the value
+		if( NULL!= fp1)
+		{
+			fprintf(fp1,"%d",count_2g);
+			fclose(fp1);
+		}
+	}
+	fp = NULL;
+	fp1 = NULL;
+	fp = fopen("/tmp/.resetcount_5g", "r");
+	if(fp == NULL) //if file does not exist, create it
+	{
+		fp = fopen("/tmp/.resetcount_5g", "w");
+		{
+			if (NULL!=fp)
+			{
+				count_5g = 1;
+				fprintf(fp,"%d",count_5g);
+				fclose(fp);
+			}
+		}
+	}
+	else
+	{
+		fscanf(fp,"%d",&count_5g);
+		fclose(fp);
+		count_5g = count_5g+1;//increment count by 1
+		fp1 = fopen("/tmp/.resetcount_5g", "w");//open the same file to write the value
+		if( NULL!= fp1)
+		{
+			fprintf(fp1,"%d",count_5g);
+			fclose(fp1);
+		}
+	}
+	fp = NULL;
+	fp1 = NULL;
+	return RETURN_OK;
 }
 
 /* wifi_down() function */
@@ -4095,13 +4161,27 @@ INT wifi_setRadioIGMPSnoopingEnable(INT radioIndex, BOOL enable)
 //Get the Reset count of radio
 INT wifi_getRadioResetCount(INT radioIndex, ULONG *output_int) 
 {
-
-	if (NULL == output_int) 
-		return RETURN_ERR;
-	if (radioIndex==0)	
-		*output_int=1;
+	int data = 0;
+	FILE *fp = NULL;
+	if(radioIndex == 0)
+	{
+		if ((fp = fopen("/tmp/.resetcount_2g", "r"))!= NULL)
+		{
+			fscanf(fp,"%d",&data);
+		}
+	}
+	else if(radioIndex == 1)
+	{
+		if ((fp = fopen("/tmp/.resetcount_5g", "r"))!= NULL)
+		{
+			fscanf(fp,"%d",&data);
+		}
+	}
 	else
-		*output_int=3;
+	{
+		return RETURN_ERR;
+	}
+	*output_int = data;
 	return RETURN_OK;
 }
 

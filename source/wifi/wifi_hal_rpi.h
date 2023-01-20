@@ -36,6 +36,7 @@ configuration required for Factory Reset*/
 #define MAX_BUF_SIZE 128
 #define MAX_CMD_SIZE 1024
 #define CONFIG_PREFIX "/nvram/hostapd"
+#define WIFI_HAL_TOTAL_NO_OF_APS 16
 
 typedef struct _bs_AssDevices
 {
