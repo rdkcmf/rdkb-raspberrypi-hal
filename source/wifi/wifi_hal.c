@@ -7581,6 +7581,44 @@ INT wifi_getApAssociatedDevice(INT apIndex, CHAR *output_buf, INT output_buf_siz
         return RETURN_OK;
 }
 
+
+/* multi-psk support */
+INT wifi_getMultiPskClientKey(INT apIndex, mac_address_t mac, wifi_key_multi_psk_t *key)
+{
+	return RETURN_OK;
+}
+INT wifi_pushMultiPskKeys(INT apIndex, wifi_key_multi_psk_t *keys, INT keysNumber)
+{
+	return RETURN_OK;
+}
+INT wifi_getMultiPskKeys(INT apIndex, wifi_key_multi_psk_t *keys, INT keysNumber)
+{
+	return RETURN_OK;
+}
+INT wifi_setNeighborReports(UINT apIndex,
+                             UINT numNeighborReports,
+                             wifi_NeighborReport_t *neighborReports)
+{
+	return RETURN_OK;
+}
+INT wifi_setZeroDFSState(UINT radioIndex, BOOL enable, BOOL precac)
+{
+     //Zero-wait DFS not supported
+     return RETURN_ERR;
+}
+
+INT wifi_getZeroDFSState(UINT radioIndex, BOOL *enable, BOOL *precac)
+{
+     //Zero-wait DFS not supported
+     return RETURN_ERR;
+}
+
+INT wifi_isZeroDFSSupported(UINT radioIndex, BOOL *supported)
+{
+     *supported = FALSE;
+     return RETURN_OK;
+}
+
 #ifdef _WIFI_HAL_TEST_
 int main(int argc,char **argv)
 {
